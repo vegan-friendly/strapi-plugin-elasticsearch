@@ -11,7 +11,8 @@
     "declaration": true,
     "jsx": "react",
     "lib": ["ES2019", "DOM"],
-    "resolveJsonModule": true
+    "resolveJsonModule": true,
+    "noImplicitAny": false
   },
   "include": ["src/**/*"],
   "exclude": ["node_modules", "dist"]
