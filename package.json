@@ -7,7 +7,13 @@
     "name": "elasticsearch",
     "description": "A plugin to enable using Elasticsearch with Strapi CMS.",
     "kind": "plugin",
-    "displayName": "Strapi <-> Elasticsearch"
+    "displayName": "Strapi <-> Elasticsearch",
+    "admin": {
+      "entry": "dist/admin/index.js",
+      "watchIgnoreFiles": [
+        "dist/admin/index.js"
+      ]
+    }
   },
   "repository": {
     "type": "git",
@@ -17,6 +23,16 @@
     "name": "Punit Sethi",
     "email": "punit@tezify.com",
     "url": "https://punits.dev"
+  },
+  "main": "dist/server.js",
+  "module": "dist/server.js",
+  "types": "dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "develop": "tsc --watch"
   },
   "dependencies": {
     "@elastic/elasticsearch": "^8.9.0",
@@ -36,5 +52,10 @@
     "node": ">=16.0.0 <=20.x.x",
     "npm": ">=6.0.0"
   },
-  "license": "MIT"
+  "license": "MIT",
+  "devDependencies": {
+    "@types/node": "^22.14.1",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.8.3"
+  }
 }
