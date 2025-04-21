@@ -1,6 +1,6 @@
 'use strict';
 console.log('strapi-plugin-elasticsearch : 00 Initializing strapi-plugin-elasticsearch plugin.');
-module.exports = async ({ strapi }) => {
+export default async ({ strapi }) => {
   const pluginConfig = await strapi.config.get('plugin.elasticsearch');
   const configureIndexingService = strapi.plugins['elasticsearch'].services.configureIndexing;
   const scheduleIndexingService = strapi.plugins['elasticsearch'].services.scheduleIndexing;
@@ -12,13 +12,8 @@ module.exports = async ({ strapi }) => {
     await configureIndexingService.initializeStrapiElasticsearch();
 
     if (!Object.keys(pluginConfig).includes('indexingCronSchedule'))
-      console.warn(
-        'The plugin strapi-plugin-elasticsearch is enabled but the indexingCronSchedule is not configured.'
-      );
-    else if (!Object.keys(pluginConfig).includes('searchConnector'))
-      console.warn(
-        'The plugin strapi-plugin-elasticsearch is enabled but the searchConnector is not configured.'
-      );
+      console.warn('The plugin strapi-plugin-elasticsearch is enabled but the indexingCronSchedule is not configured.');
+    else if (!Object.keys(pluginConfig).includes('searchConnector')) console.warn('The plugin strapi-plugin-elasticsearch is enabled but the searchConnector is not configured.');
     else {
       const connector = pluginConfig['searchConnector'];
       await esInterface.initializeSearchEngine({
@@ -76,10 +71,7 @@ module.exports = async ({ strapi }) => {
           if (Object.keys(event.params.where.id).includes('$in')) {
             const updatedItemIds = event.params.where.id['$in'];
             //bulk unpublish
-            if (
-              typeof event.params.data.publishedAt === 'undefined' ||
-              event.params.data.publishedAt === null
-            ) {
+            if (typeof event.params.data.publishedAt === 'undefined' || event.params.data.publishedAt === null) {
               for (let k = 0; k < updatedItemIds.length; k++) {
                 await scheduleIndexingService.removeItemFromIndex({
                   collectionUid: event.model.uid,
@@ -126,9 +118,7 @@ module.exports = async ({ strapi }) => {
     });
     configureIndexingService.markInitialized();
   } catch (err) {
-    console.error(
-      'An error was encountered while initializing the strapi-plugin-elasticsearch plugin.'
-    );
+    console.error('An error was encountered while initializing the strapi-plugin-elasticsearch plugin.');
     console.error(err);
   }
 };

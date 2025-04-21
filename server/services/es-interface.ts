@@ -1,6 +1,6 @@
-const { Client } = require('@elastic/elasticsearch')
-const fs = require('fs')
-const path = require('path');
+import { Client } from '@elastic/elasticsearch';
+import fs from 'fs';
+import path from 'path';
 
 
 

@@ -1,8 +1,8 @@
 
 ///START : via https://raw.githubusercontent.com/Barelydead/strapi-plugin-populate-deep/main/server/helpers/index.js
 
-const { isEmpty, merge } = require("lodash/fp");
-const transformServiceProvider = require('./transform-content');
+import { isEmpty, merge } from "lodash/fp";
+import transformServiceProvider from './transform-content';
 
 const getPluginStore = () => {
     return strapi.store({

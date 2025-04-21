@@ -7,7 +7,7 @@ import {
   SubNavSection,
   SubNavSections,
   SubNavLink,
-} from '@strapi/design-system/dist/v2';
+} from '@strapi/design-system';
 import { NavLink } from 'react-router-dom';
 import pluginId from '../../pluginId';
 

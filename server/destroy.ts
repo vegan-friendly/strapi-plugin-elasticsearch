@@ -1,5 +1,5 @@
 'use strict';
 
-module.exports = ({ strapi }) => {
+export default ({ strapi }) => {
   // destroy phase
 };

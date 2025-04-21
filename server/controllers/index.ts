@@ -1,15 +1,15 @@
 'use strict';
 
-const configureIndexing = require('./configure-indexing');
-const performSearch = require('./perform-search');
-const logIndexing = require('./log-indexing');
-const setupInfo = require('./setup-info');
-const performIndexing = require('./perform-indexing');
+import configureIndexing from './configure-indexing';
+import performSearch from './perform-search';
+import logIndexing from './log-indexing';
+import setupInfo from './setup-info';
+import performIndexing from './perform-indexing';
 
-module.exports = {
+export default {
   configureIndexing,
   performSearch,
   logIndexing,
   setupInfo,
-  performIndexing
+  performIndexing,
 };

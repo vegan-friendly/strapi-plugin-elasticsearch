@@ -1,4 +1,4 @@
-const { markdownToTxt } = require('markdown-to-txt');
+import { markdownToTxt } from 'markdown-to-txt';
 
 function transformMarkdownToText(md) {
     let text = md;

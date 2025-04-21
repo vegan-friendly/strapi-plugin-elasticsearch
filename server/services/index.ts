@@ -8,12 +8,12 @@ import logIndexing from './log-indexing';
 import helper from './helper';
 import transformContent from './transform-content';
 
-module.exports = {
+export default {
   configureIndexing,
   scheduleIndexing,
   esInterface,
   indexer,
   logIndexing,
   helper,
-  transformContent
+  transformContent,
 };

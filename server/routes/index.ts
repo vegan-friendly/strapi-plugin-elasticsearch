@@ -1,13 +1,13 @@
-const configureIndexingRoutes = require('./configure-indexing');
-const performSearch = require('./perform-search');
-const runLog = require('./run-log');
-const setupInfo = require('./setup-info');
-const performIndexing = require('./perform-indexing');
+import configureIndexingRoutes from './configure-indexing';
+import performSearch from './perform-search';
+import runLog from './run-log';
+import setupInfo from './setup-info';
+import performIndexing from './perform-indexing';
 
-module.exports = {
+export default {
   config: configureIndexingRoutes,
   search: performSearch,
   runLog: runLog,
   setupInfo: setupInfo,
-  performIndexing: performIndexing
+  performIndexing: performIndexing,
 };
