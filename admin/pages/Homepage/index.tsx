@@ -85,82 +85,109 @@ const Homepage = () => {
         return <LoadingIndicatorPage />
     else
         return (
-        <Flex alignItems="stretch" gap={4}>
-        <SubNavigation />
-        <Box padding={8} background="neutral100" width="100%">
-        <Box paddingBottom={4}>
-            <Typography variant="alpha">Setup Information</Typography>
-        </Box>   
-        <Box  width="100%" paddingBottom={4}>
-            <TwoColsLayout startCol={
-                <>
-            <Table>
-            {
-                setupInfo && (
-                    Object.keys(setupInfo).map((k, idx) => {
-                        return (
-                            <Tr key={idx}>
-                                <Td><Box padding={2}>
-                                    <Typography textColor="neutral600">{displayLabels[k]} :</Typography>
-                                </Box></Td>
+          <Flex alignItems="stretch" gap={4}>
+            <SubNavigation activeUrl="Setup Information" />
+            <Box padding={8} background="neutral100" width="100%">
+              <Box paddingBottom={4}>
+                <Typography variant="alpha">Setup Information</Typography>
+              </Box>
+              <Box width="100%" paddingBottom={4}>
+                <TwoColsLayout
+                  startCol={
+                    <>
+                      <Table>
+                        {setupInfo &&
+                          Object.keys(setupInfo).map((k, idx) => {
+                            return (
+                              <Tr key={idx}>
                                 <Td>
-                                    <Box padding={2}>
-                                    <Grid>
-                                        <GridItem padding={2}>
-                                            { 
-                                                k === 'connected' && setupInfo[k] === true && 
-                                                (
-                                                    <Typography fontWeight="bold" textColor="success500">Yes</Typography>
-                                                )
-                                            }
-                                            { 
-                                                k === 'connected' && setupInfo[k] === false && 
-                                                (
-                                                    <Typography fontWeight="bold" textColor="danger500">No</Typography>
-                                                )
-                                            }
-                                            {
-                                                k !== 'connected' && 
-                                                (
-                                                    <Typography textColor="neutral600">{String(setupInfo[k])}</Typography>
-                                                )
-                                            }
-                                        </GridItem>
-                                        <GridItem padding={1}>
-                                            {
-                                                k === 'connected' ?
-                                                <IconButton disabled={isInProgress} onClick={() => reloadElasticsearchSetupInfo({showNotification: true})} label="Refresh" icon={<Refresh />} /> : null                                            
-                                            }
-                                        </GridItem>
-                                    </Grid>
-                                    </Box>
+                                  <Box padding={2}>
+                                    <Typography textColor="neutral600">
+                                      {displayLabels[k]} :
+                                    </Typography>
+                                  </Box>
                                 </Td>
-                            </Tr>
-                        );
-                    })
-                )
-            }
-            </Table></>}
-            endCol={<>
-            <Box paddingLeft={2} paddingRight={2} paddingTop={4} paddingBottom={4} >
-                <Box paddingTop={4} paddingBottom={4}>
-                    <Typography variant="pi" fontWeight="bold" textColor="neutral600" >ACTIONS</Typography>
-                </Box>
-                <Divider />
-                <Box paddingTop={4} paddingBottom={4}>
-                    <Box paddingTop={2} paddingBottom={2}>
-                        <Button loading={isInProgress} fullWidth variant="secondary" onClick={requestFullSiteReindexing}>Rebuild Index</Button>
-                    </Box>
-                    <Box paddingTop={2} paddingBottom={2}>
-                        <Button loading={isInProgress} fullWidth variant="secondary" onClick={triggerIndexingRun}>Trigger Indexing</Button>
-                    </Box>
-                </Box>
+                                <Td>
+                                  <Box padding={2}>
+                                    <Grid>
+                                      <GridItem padding={2}>
+                                        {k === 'connected' && setupInfo[k] === true && (
+                                          <Typography fontWeight="bold" textColor="success500">
+                                            Yes
+                                          </Typography>
+                                        )}
+                                        {k === 'connected' && setupInfo[k] === false && (
+                                          <Typography fontWeight="bold" textColor="danger500">
+                                            No
+                                          </Typography>
+                                        )}
+                                        {k !== 'connected' && (
+                                          <Typography textColor="neutral600">
+                                            {String(setupInfo[k])}
+                                          </Typography>
+                                        )}
+                                      </GridItem>
+                                      <GridItem padding={1}>
+                                        {k === 'connected' ? (
+                                          <IconButton
+                                            disabled={isInProgress}
+                                            onClick={() =>
+                                              reloadElasticsearchSetupInfo({
+                                                showNotification: true,
+                                              })
+                                            }
+                                            label="Refresh"
+                                            icon={<Refresh />}
+                                          />
+                                        ) : null}
+                                      </GridItem>
+                                    </Grid>
+                                  </Box>
+                                </Td>
+                              </Tr>
+                            );
+                          })}
+                      </Table>
+                    </>
+                  }
+                  endCol={
+                    <>
+                      <Box paddingLeft={2} paddingRight={2} paddingTop={4} paddingBottom={4}>
+                        <Box paddingTop={4} paddingBottom={4}>
+                          <Typography variant="pi" fontWeight="bold" textColor="neutral600">
+                            ACTIONS
+                          </Typography>
+                        </Box>
+                        <Divider />
+                        <Box paddingTop={4} paddingBottom={4}>
+                          <Box paddingTop={2} paddingBottom={2}>
+                            <Button
+                              loading={isInProgress}
+                              fullWidth
+                              variant="secondary"
+                              onClick={requestFullSiteReindexing}
+                            >
+                              Rebuild Index
+                            </Button>
+                          </Box>
+                          <Box paddingTop={2} paddingBottom={2}>
+                            <Button
+                              loading={isInProgress}
+                              fullWidth
+                              variant="secondary"
+                              onClick={triggerIndexingRun}
+                            >
+                              Trigger Indexing
+                            </Button>
+                          </Box>
+                        </Box>
+                      </Box>
+                    </>
+                  }
+                />
+              </Box>
             </Box>
-            </>
-            } />
-        </Box>
-        </Box>
-        </Flex>
+          </Flex>
         );
 };
 

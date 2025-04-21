@@ -9,11 +9,11 @@ import PropTypes from 'prop-types';
 import pluginId from '../../pluginId';
 
 const Initializer = ({ setPlugin }) => {
-  const ref = useRef();
+  const ref = useRef<Function>();
   ref.current = setPlugin;
 
   useEffect(() => {
-    ref.current(pluginId);
+    if (ref.current != null) ref.current(pluginId);
   }, []);
 
   return null;

@@ -12,11 +12,9 @@ function transformMarkdownToText(md) {
     return text;
 }
 
-module.exports = {
-    transform({content, from}) {
-        if (from === 'markdown')
-            return transformMarkdownToText(content);
-        else
-            return from;
-    },
+export default {
+  transform({ content, from }) {
+    if (from === 'markdown') return transformMarkdownToText(content);
+    else return from;
+  },
 };

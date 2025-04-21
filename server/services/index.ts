@@ -1,12 +1,12 @@
 'use strict';
 
-const configureIndexing = require('./configure-indexing');
-const scheduleIndexing = require('./schedule-indexing');
-const esInterface = require('./es-interface');
-const indexer = require('./perform-indexing');
-const logIndexing = require('./log-indexing');
-const helper = require('./helper');
-const transformContent = require('./transform-content');
+import configureIndexing from './configure-indexing';
+import scheduleIndexing from './schedule-indexing';
+import esInterface from './es-interface';
+import indexer from './perform-indexing';
+import logIndexing from './log-indexing';
+import helper from './helper';
+import transformContent from './transform-content';
 
 module.exports = {
   configureIndexing,
