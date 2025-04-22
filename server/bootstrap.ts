@@ -16,7 +16,7 @@ export default async ({ strapi }) => {
 
     if (!Object.keys(pluginConfig).includes('indexingCronSchedule'))
       console.warn('The plugin strapi-plugin-elasticsearch is enabled but the indexingCronSchedule is not configured.');
-    else if (!Object.keys(pluginConfig).includes('searchConnector')) console.warn('The plugin strapi-plugin-elasticsearch is enabled but the searchConnector is not configured.');
+    if (!Object.keys(pluginConfig).includes('searchConnector')) console.warn('The plugin strapi-plugin-elasticsearch is enabled but the searchConnector is not configured.');
     else {
       const connector = pluginConfig['searchConnector'];
       await esInterface.initializeSearchEngine({
