@@ -1,4 +1,4 @@
-import prettyMilliseconds from 'pretty-ms';
+import humanizeDuration from 'humanize-duration';
 import { EsInterfaceService, VirtualCollectionsIndexerService, VirtualCollectionsRegistryService } from '../types';
 
 /**
@@ -102,10 +102,10 @@ export default ({ strapi }): VirtualCollectionsIndexerService => {
           page++;
         }
 
-        strapi.log.info(`Reindexed ${totalIndexed} items for virtual collection: ${collectionName}. took ${prettyMilliseconds(Date.now() - timestamp)}`);
+        strapi.log.info(`Reindexed ${totalIndexed} items for virtual collection: ${collectionName}. took ${humanizeDuration(Date.now() - timestamp)}`);
         return totalIndexed;
       } catch (error: any) {
-        strapi.log.error(`Error reindexing ${collectionName}: ${error?.message} after ${prettyMilliseconds(Date.now() - timestamp)}`);
+        strapi.log.error(`Error reindexing ${collectionName}: ${error?.message} after ${humanizeDuration(Date.now() - timestamp)}`);
         throw error;
       }
     },
