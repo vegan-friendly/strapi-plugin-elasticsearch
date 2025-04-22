@@ -4,7 +4,7 @@ import path from 'path';
 
 
 
-let client = null;
+let client: Client | null = null;
 
 export default ({ strapi }) => ({
   async initializeSearchEngine({ host, uname, password, cert }) {
@@ -20,18 +20,12 @@ export default ({ strapi }) => ({
           rejectUnauthorized: false,
         },
       });
-    } catch (err) {
-      if (err.message.includes('ECONNREFUSED')) {
-        console.error(
-          'strapi-plugin-elasticsearch : Connection to ElasticSearch at ',
-          host,
-          ' refused.'
-        );
+    } catch (err: any) {
+      if (err?.message?.includes('ECONNREFUSED')) {
+        console.error('strapi-plugin-elasticsearch : Connection to ElasticSearch at ', host, ' refused.');
         console.error(err);
       } else {
-        console.error(
-          'strapi-plugin-elasticsearch : Error while initializing connection to ElasticSearch.'
-        );
+        console.error('strapi-plugin-elasticsearch : Error while initializing connection to ElasticSearch.');
         console.error(err);
       }
       throw err;
@@ -39,23 +33,17 @@ export default ({ strapi }) => ({
   },
   async createIndex(indexName) {
     try {
-      const exists = await client.indices.exists({ index: indexName });
+      const exists = await client!.indices.exists({ index: indexName });
       if (!exists) {
-        console.log(
-          'strapi-plugin-elasticsearch : Search index ',
-          indexName,
-          ' does not exist. Creating index.'
-        );
+        console.log('strapi-plugin-elasticsearch : Search index ', indexName, ' does not exist. Creating index.');
 
-        await client.indices.create({
+        await client!.indices.create({
           index: indexName,
         });
       }
-    } catch (err) {
-      if (err.message.includes('ECONNREFUSED')) {
-        console.log(
-          'strapi-plugin-elasticsearch : Error while creating index - connection to ElasticSearch refused.'
-        );
+    } catch (err: any) {
+      if (err?.message?.includes('ECONNREFUSED')) {
+        console.log('strapi-plugin-elasticsearch : Error while creating index - connection to ElasticSearch refused.');
         console.log(err);
       } else {
         console.log('strapi-plugin-elasticsearch : Error while creating index.');
@@ -65,11 +53,11 @@ export default ({ strapi }) => ({
   },
   async deleteIndex(indexName) {
     try {
-      await client.indices.delete({
+      await client!.indices.delete({
         index: indexName,
       });
-    } catch (err) {
-      if (err.message.includes('ECONNREFUSED')) {
+    } catch (err: any) {
+      if (err?.message?.includes('ECONNREFUSED')) {
         console.log('strapi-plugin-elasticsearch : Connection to ElasticSearch refused.');
         console.log(err);
       } else {
@@ -82,32 +70,21 @@ export default ({ strapi }) => ({
     try {
       const pluginConfig = await strapi.config.get('plugin.elasticsearch');
       const aliasName = pluginConfig.indexAliasName;
-      const aliasExists = await client.indices.existsAlias({ name: aliasName });
+      const aliasExists = await client!.indices.existsAlias({ name: aliasName });
       if (aliasExists) {
-        console.log(
-          'strapi-plugin-elasticsearch : Alias with this name already exists, removing it.'
-        );
-        await client.indices.deleteAlias({ index: '*', name: aliasName });
+        console.log('strapi-plugin-elasticsearch : Alias with this name already exists, removing it.');
+        await client!.indices.deleteAlias({ index: '*', name: aliasName });
       }
-      const indexExists = await client.indices.exists({ index: indexName });
+      const indexExists = await client!.indices.exists({ index: indexName });
       if (!indexExists) await this.createIndex(indexName);
-      console.log(
-        'strapi-plugin-elasticsearch : Attaching the alias ',
-        aliasName,
-        ' to index : ',
-        indexName
-      );
-      await client.indices.putAlias({ index: indexName, name: aliasName });
-    } catch (err) {
-      if (err.message.includes('ECONNREFUSED')) {
-        console.log(
-          'strapi-plugin-elasticsearch : Attaching alias to the index - Connection to ElasticSearch refused.'
-        );
+      console.log('strapi-plugin-elasticsearch : Attaching the alias ', aliasName, ' to index : ', indexName);
+      await client!.indices.putAlias({ index: indexName, name: aliasName });
+    } catch (err: any) {
+      if (err?.message?.includes('ECONNREFUSED')) {
+        console.log('strapi-plugin-elasticsearch : Attaching alias to the index - Connection to ElasticSearch refused.');
         console.log(err);
       } else {
-        console.log(
-          'strapi-plugin-elasticsearch : Attaching alias to the index - Error while setting up alias within ElasticSearch.'
-        );
+        console.log('strapi-plugin-elasticsearch : Attaching alias to the index - Error while setting up alias within ElasticSearch.');
         console.log(err);
       }
     }
@@ -115,7 +92,7 @@ export default ({ strapi }) => ({
   async checkESConnection() {
     if (!client) return false;
     try {
-      await client.ping();
+      await client?.ping();
       return true;
     } catch (error) {
       console.error('strapi-plugin-elasticsearch : Could not connect to Elastic search.');
@@ -125,16 +102,14 @@ export default ({ strapi }) => ({
   },
   async indexDataToSpecificIndex({ itemId, itemData }, iName) {
     try {
-      await client.index({
+      await client!.index({
         index: iName,
         id: itemId,
         document: itemData,
       });
-      await client.indices.refresh({ index: iName });
+      await client!.indices.refresh({ index: iName });
     } catch (err) {
-      console.log(
-        'strapi-plugin-elasticsearch : Error encountered while indexing data to ElasticSearch.'
-      );
+      console.log('strapi-plugin-elasticsearch : Error encountered while indexing data to ElasticSearch.');
       console.log(err);
       throw err;
     }
@@ -146,20 +121,15 @@ export default ({ strapi }) => ({
   async removeItemFromIndex({ itemId }) {
     const pluginConfig = await strapi.config.get('plugin.elasticsearch');
     try {
-      await client.delete({
+      await client!.delete({
         index: pluginConfig.indexAliasName,
         id: itemId,
       });
-      await client.indices.refresh({ index: pluginConfig.indexAliasName });
-    } catch (err) {
-      if (err.meta.statusCode === 404)
-        console.error(
-          'strapi-plugin-elasticsearch : The entry to be removed from the index already does not exist.'
-        );
+      await client!.indices.refresh({ index: pluginConfig.indexAliasName });
+    } catch (err: any) {
+      if (err?.meta?.statusCode === 404) console.error('strapi-plugin-elasticsearch : The entry to be removed from the index already does not exist.');
       else {
-        console.error(
-          'strapi-plugin-elasticsearch : Error encountered while removing indexed data from ElasticSearch.'
-        );
+        console.error('strapi-plugin-elasticsearch : Error encountered while removing indexed data from ElasticSearch.');
         throw err;
       }
     }
@@ -167,15 +137,13 @@ export default ({ strapi }) => ({
   async searchData(searchQuery) {
     try {
       const pluginConfig = await strapi.config.get('plugin.elasticsearch');
-      const result = await client.search({
+      const result = await client!.search({
         index: pluginConfig.indexAliasName,
         ...searchQuery,
       });
       return result;
     } catch (err) {
-      console.log(
-        'Search : elasticClient.searchData : Error encountered while making a search request to ElasticSearch.'
-      );
+      console.log('Search : elasticClient.searchData : Error encountered while making a search request to ElasticSearch.');
       throw err;
     }
   },
