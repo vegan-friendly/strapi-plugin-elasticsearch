@@ -1,12 +1,11 @@
 import { Client } from '@elastic/elasticsearch';
 import fs from 'fs';
 import path from 'path';
-
-
+import { EsInterfaceService } from '../types';
 
 let client: Client | null = null;
 
-export default ({ strapi }) => ({
+export default ({ strapi }): EsInterfaceService => ({
   async initializeSearchEngine({ host, uname, password, cert }) {
     try {
       client = new Client({
