@@ -1,7 +1,15 @@
 'use strict';
 
-export type VirtualCollectionConfig<T extends {}> = {
-  indexName: string;
+import { MappingTypeMapping } from '@elastic/elasticsearch/lib/api/types';
+
+export type VirtualCollectionConfig<T extends StrapiEntity> = {
+  /**
+   * The alias of the latest index in Elasticsearch.
+   * It also serves as a prefix to actual indexes created in Elasticsearch.
+   * The actuall index name will be the `${indexNameBase}_${ind}`, e.g `restaurants_000001` and so on.
+   * and the alias will be the `indexNameBase`.
+   */
+  indexAlias: string;
   collectionName: string;
   extractData: (page: number, pageSize?: number) => Promise<T[]>;
   extractById: (ids: number[]) => Promise<T[]>;
@@ -9,17 +17,21 @@ export type VirtualCollectionConfig<T extends {}> = {
     collection: string;
     getIdsToReindex: (result) => Promise<number[]>;
   }>;
-  mapToIndex?: (item: T) => Promise<object>;
+
+  /**
+   * Optional schema to be sent to Elasticsearch when creating the index.
+   * If you don't include this, ElasticSearch will automatically create a schema for you.
+   */
+  mappings?: MappingTypeMapping;
 };
 
 export interface VirtualCollectionsRegistryService {
-
   /**
    * Register a virtual collection
    * @param config - The configuration for the virtual collection
    * @returns The current instance of the registry
    */
-  register<T extends {}>(config: VirtualCollectionConfig<T>): this;
+  register<T extends StrapiEntity>(config: VirtualCollectionConfig<T>): this;
 
   /**
    * get all registered virtual collections
@@ -28,8 +40,9 @@ export interface VirtualCollectionsRegistryService {
   getAll(): Array<VirtualCollectionConfig<any>>;
   get(collectionName: string): VirtualCollectionConfig<any> | null;
   findTriggersByCollection(collectionUID: string): Array<VirtualCollectionConfig<any>>;
-
 }
+
+export type StrapiEntity = { id: number; [key: string]: any };
 
 export interface VirtualCollectionsIndexerService {
   /**
@@ -41,16 +54,14 @@ export interface VirtualCollectionsIndexerService {
 
   /**
    * Reindex all items in a virtual collection index.
-   * @param indexName - The target index name.
    */
-  reindexAll(indexName: string): Promise<any>;
+  reindexAll(): Promise<any>;
 
   /**
    * Reindex all items in a virtual collection.
-   * @param collectionName - The name of the virtual collection.
-   * @param indexName - The target index name.
+   * @param collection - The virtual collection config.
    */
-  reindex(collectionName: string, indexName: string): Promise<any>;
+  reindex<T extends StrapiEntity>(collection: VirtualCollectionConfig<T>): Promise<any>;
 
   /**
    * Handle a trigger event from a collection.

@@ -4,17 +4,18 @@
 import { isEmpty, merge } from "lodash/fp";
 import transformServiceProvider from './transform-content';
 
-const getPluginStore = () => {
-    return strapi.store({
-      environment: '',
-      type: 'plugin',
-      name: 'elasticsearch',
-    });
-  }
+const defaultIndexPrefix = 'strapi-plugin-elasticsearch-index';
 
+const getPluginStore = () => {
+  return strapi.store({
+    environment: '',
+    type: 'plugin',
+    name: 'elasticsearch',
+  });
+};
 
 const getModelPopulationAttributes = (model) => {
-  if (model.uid === "plugin::upload.file") {
+  if (model.uid === 'plugin::upload.file') {
     const { related, ...attributes } = model.attributes;
     return attributes;
   }
@@ -192,33 +193,38 @@ export default ({ strapi }) => ({
   getIndexItemId({ collectionName, itemId }) {
     return collectionName + '::' + itemId;
   },
-  async getCurrentIndexName() {
+  async getCurrentIndexName(indexPrefix: string = defaultIndexPrefix) {
     const pluginStore = getPluginStore();
     const settings = (await pluginStore.get({ key: 'configsettings' })) as string | null | undefined;
-    let indexName = 'strapi-plugin-elasticsearch-index_000001';
+    let indexName = indexPrefix + '_000001';
     if (settings) {
       const objSettings = JSON.parse(settings);
       if (Object.keys(objSettings).includes('indexConfig')) {
         const idxConfig = objSettings['indexConfig'];
-        indexName = idxConfig['name'];
+        if (idxConfig[indexPrefix]) {
+          indexName = idxConfig[indexPrefix];
+        }
       }
     }
     return indexName;
   },
-  async getIncrementedIndexName() {
-    const currentIndexName = await this.getCurrentIndexName();
-    const number = parseInt(currentIndexName.split('index_')[1]);
-    return 'strapi-plugin-elasticsearch-index_' + String(number + 1).padStart(6, '0');
+  async getIncrementedIndexName(indexPrefix: string = defaultIndexPrefix) {
+    const currentIndexName = await this.getCurrentIndexName(indexPrefix);
+    const number = parseInt(currentIndexName.split(indexPrefix + '_')[1]);
+    return indexPrefix + '_' + String(number + 1).padStart(6, '0');
   },
-  async storeCurrentIndexName(indexName) {
+  async storeCurrentIndexName(indexName, indexPrefix = defaultIndexPrefix) {
     const pluginStore = getPluginStore();
     const settings = (await pluginStore.get({ key: 'configsettings' })) as string | null | undefined;
     if (settings) {
       const objSettings = JSON.parse(settings);
-      objSettings['indexConfig'] = { name: indexName };
+      objSettings['indexConfig'] = {
+        ...objSettings['indexConfig'],
+        [indexPrefix]: indexName,
+      };
       await pluginStore.set({ key: 'configsettings', value: JSON.stringify(objSettings) });
     } else {
-      const newSettings = JSON.stringify({ indexConfig: { name: indexName } });
+      const newSettings = JSON.stringify({ indexConfig: { [indexPrefix]: indexName } });
       await pluginStore.set({ key: 'configsettings', value: newSettings });
     }
   },

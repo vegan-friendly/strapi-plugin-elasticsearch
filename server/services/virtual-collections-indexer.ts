@@ -1,5 +1,5 @@
 import humanizeDuration from 'humanize-duration';
-import { EsInterfaceService, VirtualCollectionsIndexerService, VirtualCollectionsRegistryService } from '../types';
+import { EsInterfaceService, VirtualCollectionsIndexerService, VirtualCollectionsRegistryService, VirtualCollectionConfig } from '../types';
 
 /**
  * Service to handle indexing of virtual collections
@@ -29,29 +29,29 @@ export default ({ strapi }): VirtualCollectionsIndexerService => {
           return null;
         }
 
-        const data = results[0];
-        const indexData = collection.mapToIndex ? data : data;
+        const itemData = results[0];
 
-        const esService = getElasticsearchService();
+        const esInterface = getElasticsearchService();
         const helper = getHelperService();
         const indexItemId = helper.getIndexItemId(collectionName, itemId);
-        await esService.indexDataToSpecificIndex({ itemId: indexItemId, itemData: indexData }, collection.indexName);
+        const indexName = await helper.getCurrentIndexName();
+        await esInterface.indexDataToSpecificIndex({ itemId: indexItemId, itemData }, indexName);
 
         strapi.log.debug(`Indexed virtual item: ${collectionName}:${itemId}`);
-        return indexData;
+        return itemData;
       } catch (error: any) {
         strapi.log.error(`Error indexing ${collectionName}:${itemId}: ${error?.message}`);
         throw error;
       }
     },
 
-    async reindexAll(indexName: string) {
+    async reindexAll() {
       const registry = getRegistryService();
       const collections = registry.getAll();
 
       let totalIndexed = 0;
       for (const collection of collections) {
-        totalIndexed += await this.reindex(collection.collectionName, indexName);
+        totalIndexed += await this.reindex(collection);
       }
 
       console.log(`strapi-plugin-elasticsearch : Reindexed ${totalIndexed} items across all ${collections.length} virtual collections`);
@@ -61,19 +61,19 @@ export default ({ strapi }): VirtualCollectionsIndexerService => {
     /**
      * Reindex all items in a virtual collection
      */
-    async reindex(collectionName: string, indexName: string) {
-      const registry = getRegistryService();
-      const collection = registry.get(collectionName);
+    async reindex<T extends { id: number }>(collection: VirtualCollectionConfig<T>) {
+      const collectionName = collection.collectionName;
+      const indexAlias = collection.indexAlias;
 
-      if (!collection) {
-        throw new Error(`Virtual collection not found: ${collectionName}`);
-      }
+      const helper = getHelperService();
+      const oldIndexName = await helper.getCurrentIndexName(indexAlias);
+      const newIndexName = await helper.getIncrementedIndexName(indexAlias);
 
-      const timestamp = Date.now();
+      let timestamp = Date.now();
       try {
-        const esService = getElasticsearchService();
-        const helper = getHelperService();
-        // await esService.createIndex(tempIndexName);
+        const esInterface = getElasticsearchService();
+
+        await esInterface.createIndex(newIndexName, collection.mappings);
 
         let page = 0;
         let hasMoreData = true;
@@ -88,21 +88,29 @@ export default ({ strapi }): VirtualCollectionsIndexerService => {
           }
 
           const operations: { itemId: string; itemData: any }[] = [];
-          for (const item of pageData) {
-            const itemId = helper.getIndexItemId({ collectionName, itemId: item.id });
-            const itemData = collection.mapToIndex ? item : item;
+          for (const itemData of pageData) {
+            const itemId = helper.getIndexItemId({ collectionName, itemId: itemData.id });
             operations.push({ itemId, itemData });
           }
 
           if (operations.length > 0) {
-            await Promise.all(operations.map((op) => esService.indexDataToSpecificIndex(op, indexName)));
+            await Promise.all(operations.map((op) => esInterface.indexDataToSpecificIndex(op, newIndexName)));
           }
 
           totalIndexed += pageData.length;
           page++;
         }
+        strapi.log.info(`Reindexed ${totalIndexed} items for virtual collection: ${collectionName}. took ${humanizeDuration(Date.now() - timestamp)}. now updating alias.`);
 
-        strapi.log.info(`Reindexed ${totalIndexed} items for virtual collection: ${collectionName}. took ${humanizeDuration(Date.now() - timestamp)}`);
+        timestamp = Date.now();
+        await esInterface.attachAliasToIndex(newIndexName, indexAlias, collection.mappings);
+        strapi.log.info(`Done attachAliasToIndex alias ${indexAlias} to index ${newIndexName}. took ${humanizeDuration(Date.now() - timestamp)}`);
+
+        timestamp = Date.now();
+        await helper.storeCurrentIndexName(newIndexName, indexAlias);
+        await esInterface.deleteIndex(oldIndexName);
+        strapi.log.info(`Done deleting ${oldIndexName}. took ${humanizeDuration(Date.now() - timestamp)}`);
+
         return totalIndexed;
       } catch (error: any) {
         strapi.log.error(`Error reindexing ${collectionName}: ${error?.message} after ${humanizeDuration(Date.now() - timestamp)}`);
@@ -148,8 +156,8 @@ export default ({ strapi }): VirtualCollectionsIndexerService => {
       }
 
       try {
-        const esService = getElasticsearchService();
-        await esService.removeItemFromIndex({ itemId });
+        const esInterface = getElasticsearchService();
+        await esInterface.removeItemFromIndex({ itemId });
 
         strapi.log.debug(`Deleted indexed item: ${collectionName}:${itemId}`);
         return true;

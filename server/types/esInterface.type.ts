@@ -1,3 +1,5 @@
+import { MappingTypeMapping } from '@elastic/elasticsearch/lib/api/types';
+
 export interface EsInterfaceService {
   /**
    * Initializes the search engine connection.
@@ -11,7 +13,7 @@ export interface EsInterfaceService {
    * @param indexName - The name of the index to create.
    * @returns A promise that resolves when the index is created.
    */
-  createIndex(indexName: string): Promise<void>;
+  createIndex(indexName: string, mappings?: MappingTypeMapping): Promise<void>;
 
   /**
    * Deletes an index from the search engine.
@@ -23,9 +25,10 @@ export interface EsInterfaceService {
   /**
    * Attaches an alias to a specific index.
    * @param indexName - The index to which the alias should be attached.
+   * @param aliasName - Alias to attach. If not provided, alias from configuration 'indexAliasName' will be used.
    * @returns A promise that resolves when the alias is set.
    */
-  attachAliasToIndex(indexName: string): Promise<void>;
+  attachAliasToIndex(indexName: string, aliasName?: string, mappings?: MappingTypeMapping): Promise<void>;
 
   /**
    * Checks the connection status of the search engine.

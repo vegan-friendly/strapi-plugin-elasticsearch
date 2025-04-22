@@ -1,4 +1,4 @@
-import { VirtualCollectionConfig, VirtualCollectionsRegistryService } from '../types';
+import { StrapiEntity, VirtualCollectionConfig, VirtualCollectionsRegistryService } from '../types';
 
 /**
  * Service to handle indexing of virtual collections
@@ -23,7 +23,7 @@ export default ({ strapi }): VirtualCollectionsRegistryService => {
       return this.getAll().find((collection) => collection.collectionName === collectionName) ?? null;
     },
 
-    register: function <T extends {}>(config: VirtualCollectionConfig<T>): VirtualCollectionsRegistryService {
+    register: function <T extends StrapiEntity>(config: VirtualCollectionConfig<T>): VirtualCollectionsRegistryService {
       throw new Error('Function not implemented.');
     },
 

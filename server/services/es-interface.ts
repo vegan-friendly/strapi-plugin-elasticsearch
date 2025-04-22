@@ -2,6 +2,7 @@ import { Client } from '@elastic/elasticsearch';
 import fs from 'fs';
 import path from 'path';
 import { EsInterfaceService } from '../types';
+import { MappingTypeMapping } from '@elastic/elasticsearch/lib/api/types';
 
 let client: Client | null = null;
 
@@ -30,7 +31,7 @@ export default ({ strapi }): EsInterfaceService => ({
       throw err;
     }
   },
-  async createIndex(indexName) {
+  async createIndex(indexName, mappings?: MappingTypeMapping) {
     try {
       const exists = await client!.indices.exists({ index: indexName });
       if (!exists) {
@@ -38,6 +39,7 @@ export default ({ strapi }): EsInterfaceService => ({
 
         await client!.indices.create({
           index: indexName,
+          mappings: mappings ?? undefined,
         });
       }
     } catch (err: any) {
@@ -65,17 +67,17 @@ export default ({ strapi }): EsInterfaceService => ({
       }
     }
   },
-  async attachAliasToIndex(indexName) {
+  async attachAliasToIndex(indexName, optionalAliasName?: string, mappings?: MappingTypeMapping) {
     try {
       const pluginConfig = await strapi.config.get('plugin.elasticsearch');
-      const aliasName = pluginConfig.indexAliasName;
+      const aliasName = optionalAliasName ? optionalAliasName : pluginConfig.indexAliasName;
       const aliasExists = await client!.indices.existsAlias({ name: aliasName });
       if (aliasExists) {
         console.log('strapi-plugin-elasticsearch : Alias with this name already exists, removing it.');
         await client!.indices.deleteAlias({ index: '*', name: aliasName });
       }
       const indexExists = await client!.indices.exists({ index: indexName });
-      if (!indexExists) await this.createIndex(indexName);
+      if (!indexExists) await this.createIndex(indexName, mappings);
       console.log('strapi-plugin-elasticsearch : Attaching the alias ', aliasName, ' to index : ', indexName);
       await client!.indices.putAlias({ index: indexName, name: aliasName });
     } catch (err: any) {
