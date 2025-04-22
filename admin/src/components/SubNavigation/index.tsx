@@ -11,7 +11,7 @@ import {
 import { NavLink } from 'react-router-dom';
 import pluginId from '../../pluginId';
 
-export const SubNavigation = ({ activeUrl }) => {
+export const SubNavigation = ({ activeUrl = null }) => {
   const links = [
     {
       id: 1,

@@ -102,78 +102,78 @@ const ConfigureField = ({config, index, setFieldConfig}) => {
 const ConfigureCollection = () => {
     const [isInProgress, setIsInProgress] = useState(false);
     const [selectedCollection, setSelectedCollection] = useState(null);
-    const [collectionConfig, setCollectionConfig] = useState(null);
+    const [collectionConfig, setCollectionConfig] = useState<any>(null);
 
     const params = useParams();
     const toggleNotification = useNotification();
-    const updateCollectionsConfig = ({index, config}) => {
-        setCollectionConfig({
-            collectionName: collectionConfig.collectionName,
-            attributes: collectionConfig.attributes.map((e, idx) => index === idx ? config : e)
-        });
-    }
+    const updateCollectionsConfig = ({ index, config }) => {
+      setCollectionConfig({
+        collectionName: collectionConfig.collectionName,
+        attributes: collectionConfig.attributes.map((e, idx) => (index === idx ? config : e)),
+      });
+    };
 
     const saveCollectionConfig = () => {
-        if (collectionConfig && collectionConfig.collectionName)
-        {
-            const data = {}
-            data[collectionConfig.collectionName] = {}
-            for (let k=0; k<collectionConfig.attributes.length; k++)
-            {
-                const {name, ...attribs} = collectionConfig.attributes[k]
-                data[collectionConfig.collectionName][name] = attribs
-            }
-            setIsInProgress(true);
-            saveConfigForCollection(collectionConfig.collectionName, data)
-            .then((resp) => {
-                toggleNotification({
-                    type: "success", message: "The collection configuration is saved.", timeout: 5000
-                });
-            })
-            .catch((err) => {
-                toggleNotification({
-                    type: "warning", message: err.message || "An error was encountered.", timeout: 5000
-                });
-                console.log(err);
-            })
-            .finally(() => setIsInProgress(false));
+      if (collectionConfig && collectionConfig.collectionName) {
+        const data = {};
+        data[collectionConfig.collectionName] = {};
+        for (let k = 0; k < collectionConfig.attributes.length; k++) {
+          const { name, ...attribs } = collectionConfig.attributes[k];
+          data[collectionConfig.collectionName][name] = attribs;
         }
-    }
+        setIsInProgress(true);
+        saveConfigForCollection(collectionConfig.collectionName, data)
+          .then((resp) => {
+            toggleNotification({
+              type: 'success',
+              message: 'The collection configuration is saved.',
+              timeout: 5000,
+            });
+          })
+          .catch((err) => {
+            toggleNotification({
+              type: 'warning',
+              message: err.message || 'An error was encountered.',
+              timeout: 5000,
+            });
+            console.log(err);
+          })
+          .finally(() => setIsInProgress(false));
+      }
+    };
 
     useEffect(() => {
-        if (params && params.collectionName)
-            setSelectedCollection(params.collectionName)
+      if (params && params.collectionName) setSelectedCollection(params.collectionName);
     }, [params]);
 
     useEffect(() => {
-        if (selectedCollection)
-        {
-            loadConfigForCollection(selectedCollection)
-            .then((resp) => {
-                if (Object.keys(resp).length === 0)
-                {
-                    toggleNotification({
-                        type: "warning", message: 'No collection with the selected name exists.', timeout: 5000
-                    });
-                }
-                else
-                {
-                    const collectionName = Object.keys(resp)[0];
-                    const attributeNames = Object.keys(resp[collectionName]);
-                    const attributes = [];
-                    for (let s = 0; s<attributeNames.length; s++)
-                        attributes.push({name: attributeNames[s], ...resp[collectionName][attributeNames[s]]})
-                    const item = {collectionName, attributes};
-                    setCollectionConfig(item);
-                }
-            })
-            .catch((err) => {
-                toggleNotification({
-                    type: "warning", message: err.message || "An error was encountered.", timeout: 5000
-                });
-                console.log(err);
-            });    
-        }
+      if (selectedCollection) {
+        loadConfigForCollection(selectedCollection)
+          .then((resp) => {
+            if (Object.keys(resp).length === 0) {
+              toggleNotification({
+                type: 'warning',
+                message: 'No collection with the selected name exists.',
+                timeout: 5000,
+              });
+            } else {
+              const collectionName = Object.keys(resp)[0];
+              const attributeNames = Object.keys(resp[collectionName]);
+              const attributes: any = [];
+              for (let s = 0; s < attributeNames.length; s++) attributes.push({ name: attributeNames[s], ...resp[collectionName][attributeNames[s]] });
+              const item = { collectionName, attributes };
+              setCollectionConfig(item);
+            }
+          })
+          .catch((err) => {
+            toggleNotification({
+              type: 'warning',
+              message: err.message || 'An error was encountered.',
+              timeout: 5000,
+            });
+            console.log(err);
+          });
+      }
     }, [selectedCollection]);
 
   if (collectionConfig === null)
