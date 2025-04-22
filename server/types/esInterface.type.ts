@@ -36,6 +36,7 @@ export interface EsInterfaceService {
   /**
    * Indexes data to a specific index.
    * @param data - An object containing the itemId and itemData to index.
+   * @param data.itemId - The full ID of the item to index, in format `collectionName + '::' + itemId`.
    * @param indexName - The target index name.
    * @returns A promise that resolves when the data is indexed.
    */

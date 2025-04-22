@@ -11,6 +11,8 @@ import middlewares from './middlewares';
 import policies from './policies';
 import services from './services';
 
+export * from './types';
+
 export default {
   register,
   bootstrap,

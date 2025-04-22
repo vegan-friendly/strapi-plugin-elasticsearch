@@ -7,6 +7,8 @@ import indexer from './perform-indexing';
 import logIndexing from './log-indexing';
 import helper from './helper';
 import transformContent from './transform-content';
+import virtualCollectionsRegistry from './virtual-collections-registry';
+import virtualCollectionsIndexer from './virtual-collections-indexer';
 
 export default {
   configureIndexing,
@@ -16,4 +18,6 @@ export default {
   logIndexing,
   helper,
   transformContent,
+  virtualCollectionsRegistry,
+  virtualCollectionsIndexer,
 };

@@ -1,19 +1,18 @@
+import { EsInterfaceService } from '../types';
 
 export default ({ strapi }) => ({
   async rebuildIndex() {
     const helper = strapi.plugins['elasticsearch'].services.helper;
-    const esInterface = strapi.plugins['elasticsearch'].services.esInterface;
+    const esInterface: EsInterfaceService = strapi.plugins['elasticsearch'].services.esInterface;
     const scheduleIndexingService = strapi.plugins['elasticsearch'].services.scheduleIndexing;
     const configureIndexingService = strapi.plugins['elasticsearch'].services.configureIndexing;
     const logIndexingService = strapi.plugins['elasticsearch'].services.logIndexing;
+    const virtualCollectionsIndexer = strapi.plugins['elasticsearch'].services['virtualCollectionsIndexer'];
 
     try {
       console.log('strapi-plugin-elasticsearch : Request to rebuild the index received.');
       const oldIndexName = await helper.getCurrentIndexName();
-      console.log(
-        'strapi-plugin-elasticsearch : Recording the previous index name : ',
-        oldIndexName
-      );
+      console.log('strapi-plugin-elasticsearch : Recording the previous index name : ', oldIndexName);
 
       //Step 1 : Create a new index
       const newIndexName = await helper.getIncrementedIndexName();
@@ -28,37 +27,34 @@ export default ({ strapi }) => ({
         const cols = await configureIndexingService.getCollectionsConfiguredForIndexing();
         for (let r = 0; r < cols.length; r++) await this.indexCollection(cols[r], newIndexName);
 
+        // Indexing the virtual collections
+        console.log('strapi-plugin-elasticsearch : Starting to index virtual collections.');
+        const totalIndexed = await virtualCollectionsIndexer.reindexAll(newIndexName);
+
         await scheduleIndexingService.markIndexingTaskComplete(item.id);
 
         console.log('strapi-plugin-elasticsearch : Indexing of data into the new index complete.');
         //Step 4 : Move the alias to this new index
         await esInterface.attachAliasToIndex(newIndexName);
-        console.log(
-          'strapi-plugin-elasticsearch : Attaching the newly created index to the alias.'
-        );
+        console.log('strapi-plugin-elasticsearch : Attaching the newly created index to the alias.');
         //Step 3 : Update the search-indexing-name
         await helper.storeCurrentIndexName(newIndexName);
 
         console.log('strapi-plugin-elasticsearch : Deleting the previous index : ', oldIndexName);
         //Step 5 : Delete the previous index
         await esInterface.deleteIndex(oldIndexName);
-        await logIndexingService.recordIndexingPass(
-          'Request to immediately re-index site-wide content completed successfully.'
-        );
+        await logIndexingService.recordIndexingPass('Request to immediately re-index site-wide content completed successfully.');
 
         return true;
       } else {
-        await logIndexingService.recordIndexingFail(
-          'An error was encountered while trying site-wide re-indexing of content.'
-        );
+        await logIndexingService.recordIndexingFail('An error was encountered while trying site-wide re-indexing of content.');
         return false;
       }
     } catch (err) {
-      console.log(
-        'strapi-plugin-elasticsearch : searchController : An error was encountered while re-indexing.'
-      );
+      console.log('strapi-plugin-elasticsearch : searchController : An error was encountered while re-indexing.');
       console.log(err);
       await logIndexingService.recordIndexingFail(err);
+      throw err;
     }
   },
   async indexCollection(collectionName, indexName = null) {
@@ -68,7 +64,7 @@ export default ({ strapi }) => ({
     const configureIndexingService = strapi.plugins['elasticsearch'].services.configureIndexing;
     const esInterface = strapi.plugins['elasticsearch'].services.esInterface;
     if (indexName === null) indexName = await helper.getCurrentIndexName();
-    let entries = [];
+    let entries: { id: string; [key: string]: any }[] = []; //TODO: strapi should provide a type for this
     if (isCollectionDraftPublish) {
       entries = await strapi.entityService.findMany(collectionName, {
         sort: { createdAt: 'DESC' },
@@ -100,10 +96,7 @@ export default ({ strapi }) => ({
           data: item,
           collectionConfig,
         });
-        await esInterface.indexDataToSpecificIndex(
-          { itemId: indexItemId, itemData: dataToIndex },
-          indexName
-        );
+        await esInterface.indexDataToSpecificIndex({ itemId: indexItemId, itemData: dataToIndex }, indexName);
       }
     }
     return true;
@@ -112,14 +105,13 @@ export default ({ strapi }) => ({
     const scheduleIndexingService = strapi.plugins['elasticsearch'].services.scheduleIndexing;
     const configureIndexingService = strapi.plugins['elasticsearch'].services.configureIndexing;
     const logIndexingService = strapi.plugins['elasticsearch'].services.logIndexing;
-    const esInterface = strapi.plugins['elasticsearch'].services.esInterface;
+    const esInterface: EsInterfaceService = strapi.plugins['elasticsearch'].services.esInterface;
     const helper = strapi.plugins['elasticsearch'].services.helper;
     const recs = await scheduleIndexingService.getItemsPendingToBeIndexed();
     const fullSiteIndexing = recs.filter((r) => r.full_site_indexing === true).length > 0;
     if (fullSiteIndexing) {
       await this.rebuildIndex();
-      for (let r = 0; r < recs.length; r++)
-        await scheduleIndexingService.markIndexingTaskComplete(recs[r].id);
+      for (let r = 0; r < recs.length; r++) await scheduleIndexingService.markIndexingTaskComplete(recs[r].id);
     } else {
       try {
         for (let r = 0; r < recs.length; r++) {
@@ -159,13 +151,9 @@ export default ({ strapi }) => ({
             }
           } else await scheduleIndexingService.markIndexingTaskComplete(recs[r].id);
         }
-        await logIndexingService.recordIndexingPass(
-          'Indexing of ' + String(recs.length) + ' records complete.'
-        );
+        await logIndexingService.recordIndexingPass('Indexing of ' + String(recs.length) + ' records complete.');
       } catch (err) {
-        await logIndexingService.recordIndexingFail(
-          'Indexing of records failed - ' + ' ' + String(err)
-        );
+        await logIndexingService.recordIndexingFail('Indexing of records failed - ' + ' ' + String(err));
         console.log(err);
         return false;
       }

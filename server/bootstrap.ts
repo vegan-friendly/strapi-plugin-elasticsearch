@@ -1,5 +1,7 @@
 'use strict';
-console.log('strapi-plugin-elasticsearch : 00 Initializing strapi-plugin-elasticsearch plugin.');
+
+import { VirtualCollectionsRegistryService } from './types/virtual-collections.type';
+
 export default async ({ strapi }) => {
   const pluginConfig = await strapi.config.get('plugin.elasticsearch');
   const configureIndexingService = strapi.plugins['elasticsearch'].services.configureIndexing;
@@ -7,8 +9,9 @@ export default async ({ strapi }) => {
   const esInterface = strapi.plugins['elasticsearch'].services.esInterface;
   const indexer = strapi.plugins['elasticsearch'].services.indexer;
   const helper = strapi.plugins['elasticsearch'].services.helper;
+  const virtualCollectionIndexer = strapi.plugins['elasticsearch'].services.virtualCollectionsIndexer;
+
   try {
-    console.log('strapi-plugin-elasticsearch 1: Initializing strapi-plugin-elasticsearch plugin.');
     await configureIndexingService.initializeStrapiElasticsearch();
 
     if (!Object.keys(pluginConfig).includes('indexingCronSchedule'))
@@ -116,6 +119,44 @@ export default async ({ strapi }) => {
         }
       }
     });
+
+    // Register virtual collections //
+
+    const registry: VirtualCollectionsRegistryService = strapi.service('plugin::elasticsearch.virtualCollectionsRegistry');
+
+    // Setup lifecycle hooks
+    const virtualCollections = registry.getAll();
+
+    // Create a set of all collections that need hooks
+    const collectionsToHook = new Set();
+
+    virtualCollections.forEach((collection) => {
+      collection.triggers.forEach((trigger) => {
+        collectionsToHook.add(trigger.collection);
+      });
+    });
+
+    // Setup hooks for each collection
+    collectionsToHook.forEach((collectionUID) => {
+      strapi.log.info(`Setting up Elasticsearch lifecycle hooks for collection: ${collectionUID}`);
+
+      strapi.db.lifecycles.subscribe({
+        models: [collectionUID],
+
+        afterCreate: async (event) => {
+          await virtualCollectionIndexer.handleTriggerEvent(event);
+        },
+
+        afterUpdate: async (event) => {
+          await virtualCollectionIndexer.handleTriggerEvent(event);
+        },
+
+        afterDelete: async (event) => {
+          await virtualCollectionIndexer.handleTriggerEvent(event);
+        },
+      });
+    });
+
     configureIndexingService.markInitialized();
   } catch (err) {
     console.error('An error was encountered while initializing the strapi-plugin-elasticsearch plugin.');

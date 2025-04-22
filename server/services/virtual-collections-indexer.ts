@@ -1,38 +1,15 @@
-import { EsInterfaceService, VirtualCollectionsRegistryService } from '../types';
+import prettyMilliseconds from 'pretty-ms';
+import { EsInterfaceService, VirtualCollectionsIndexerService, VirtualCollectionsRegistryService } from '../types';
 
 /**
  * Service to handle indexing of virtual collections
  */
-export default ({ strapi }) => {
+export default ({ strapi }): VirtualCollectionsIndexerService => {
   const getElasticsearchService = (): EsInterfaceService => strapi.plugin('elasticsearch').service('esInterface');
   const getRegistryService = (): VirtualCollectionsRegistryService => strapi.service('plugin::elasticsearch.virtualCollectionsRegistry');
+  const getHelperService = () => strapi.plugins['elasticsearch'].services.helper;
 
   return {
-    /**
-     * Initialize indexes for all registered virtual collections
-     */
-    async initializeIndexes() {
-      const registry = getRegistryService();
-      const collections = registry.getAll();
-
-      for (const collection of collections) {
-        await this.createIndexIfNotExists(collection.indexName);
-      }
-    },
-
-    /**
-     * Create an Elasticsearch index if it doesn't exist
-     */
-    async createIndexIfNotExists(indexName) {
-      const esService = getElasticsearchService();
-      const indexExists = (await esService.checkESConnection()) && (await esService.indexExists(indexName));
-
-      if (!indexExists) {
-        await esService.createIndex(indexName);
-        strapi.log.info(`Created Elasticsearch index: ${indexName}`);
-      }
-    },
-
     /**
      * Index a single item from a virtual collection
      */
@@ -53,10 +30,12 @@ export default ({ strapi }) => {
         }
 
         const data = results[0];
-        const indexData = collection.mapToIndex?(data) : data;
+        const indexData = collection.mapToIndex ? data : data;
 
         const esService = getElasticsearchService();
-        await esService.indexDataToSpecificIndex({ itemId, itemData: indexData }, collection.indexName);
+        const helper = getHelperService();
+        const indexItemId = helper.getIndexItemId(collectionName, itemId);
+        await esService.indexDataToSpecificIndex({ itemId: indexItemId, itemData: indexData }, collection.indexName);
 
         strapi.log.debug(`Indexed virtual item: ${collectionName}:${itemId}`);
         return indexData;
@@ -90,10 +69,10 @@ export default ({ strapi }) => {
         throw new Error(`Virtual collection not found: ${collectionName}`);
       }
 
+      const timestamp = Date.now();
       try {
-        const timestamp = Date.now();
-        
         const esService = getElasticsearchService();
+        const helper = getHelperService();
         // await esService.createIndex(tempIndexName);
 
         let page = 0;
@@ -110,8 +89,9 @@ export default ({ strapi }) => {
 
           const operations: { itemId: string; itemData: any }[] = [];
           for (const item of pageData) {
-            const itemData = collection.mapToIndex?(item) : item;
-            operations.push({ itemId: item.id, itemData } );
+            const itemId = helper.getIndexItemId({ collectionName, itemId: item.id });
+            const itemData = collection.mapToIndex ? item : item;
+            operations.push({ itemId, itemData });
           }
 
           if (operations.length > 0) {
@@ -122,12 +102,10 @@ export default ({ strapi }) => {
           page++;
         }
 
-        await esService.attachAliasToIndex(tempIndexName);
-
-        strapi.log.info(`Reindexed ${totalIndexed} items for virtual collection: ${collectionName}`);
+        strapi.log.info(`Reindexed ${totalIndexed} items for virtual collection: ${collectionName}. took ${prettyMilliseconds(Date.now() - timestamp)}`);
         return totalIndexed;
-      } catch (error) {
-        strapi.log.error(`Error reindexing ${collectionName}: ${error.message}`);
+      } catch (error: any) {
+        strapi.log.error(`Error reindexing ${collectionName}: ${error?.message} after ${prettyMilliseconds(Date.now() - timestamp)}`);
         throw error;
       }
     },
