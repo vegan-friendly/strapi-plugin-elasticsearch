@@ -62,7 +62,7 @@ export default ({ strapi }) => ({
       'updatedBy',
     ];
     const pluginStore = getPluginStore();
-    const settings = await pluginStore.get({ key: 'configsettings' });
+    const settings = await pluginStore.get({ key: 'configsettings' }) as string | null | undefined;
     const contentTypes = strapi.contentTypes;
     const apiContentTypes = Object.keys(contentTypes).filter((c) => c.includes('api::'));
     const apiContentConfig = {};
@@ -126,7 +126,7 @@ export default ({ strapi }) => ({
   },
   async importContentConfig({ config }) {
     const pluginStore = getPluginStore();
-    const settings = await pluginStore.get({ key: 'configsettings' });
+    const settings = (await pluginStore.get({ key: 'configsettings' })) as string | null | undefined;
     if (settings) {
       const objSettings = JSON.parse(settings);
       objSettings['contentConfig'] = JSON.parse(config);
@@ -144,7 +144,7 @@ export default ({ strapi }) => ({
   },
   async setContentConfig({ collection, config }) {
     const pluginStore = getPluginStore();
-    const settings = await pluginStore.get({ key: 'configsettings' });
+    const settings = (await pluginStore.get({ key: 'configsettings' })) as string | null | undefined;
     if (settings) {
       const objSettings = JSON.parse(settings);
       if (Object.keys(objSettings).includes('contentConfig')) {
