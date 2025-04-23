@@ -46,6 +46,7 @@ export default ({ strapi }): VirtualCollectionsIndexerService => {
     },
 
     async reindexAll() {
+      const timestamp = Date.now();
       const registry = getRegistryService();
       const collections = registry.getAll();
 
@@ -54,7 +55,9 @@ export default ({ strapi }): VirtualCollectionsIndexerService => {
         totalIndexed += await this.reindex(collection);
       }
 
-      console.log(`strapi-plugin-elasticsearch : Reindexed ${totalIndexed} items across all ${collections.length} virtual collections`);
+      strapi.log.info(
+        `strapi-plugin-elasticsearch : Reindexed ${totalIndexed} items across all ${collections.length} virtual collections. took ${humanizeDuration(Date.now() - timestamp)} `
+      );
       return totalIndexed;
     },
 
