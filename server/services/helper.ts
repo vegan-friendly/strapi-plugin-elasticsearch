@@ -1,18 +1,11 @@
-
 ///START : via https://raw.githubusercontent.com/Barelydead/strapi-plugin-populate-deep/main/server/helpers/index.js
 
-import { isEmpty, merge } from "lodash/fp";
+import { isEmpty, merge } from 'lodash/fp';
 import transformServiceProvider from './transform-content';
+import { EsInterfaceService } from '../types';
+import esInterface from './es-interface';
 
 const defaultIndexPrefix = 'strapi-plugin-elasticsearch-index';
-
-const getPluginStore = () => {
-  return strapi.store({
-    environment: '',
-    type: 'plugin',
-    name: 'elasticsearch',
-  });
-};
 
 const getModelPopulationAttributes = (model) => {
   if (model.uid === 'plugin::upload.file') {
@@ -163,112 +156,119 @@ function extractSubfieldData({ config, data }) {
   return returnData;
 }
 
-export default ({ strapi }) => ({
-  async getElasticsearchInfo() {
-    const configureService = strapi.plugins['elasticsearch'].services.configureIndexing;
-    const esInterface = strapi.plugins['elasticsearch'].services.esInterface;
-    const pluginConfig = await strapi.config.get('plugin.elasticsearch');
+export default ({ strapi }) => {
+  const getEsInterface: () => EsInterfaceService = () => strapi.plugins['elasticsearch'].services.esInterface;
+  return {
+    async getElasticsearchInfo() {
+      const configureService = strapi.plugins['elasticsearch'].services.configureIndexing;
 
-    const connected = pluginConfig.searchConnector && pluginConfig.searchConnector.host ? await esInterface.checkESConnection() : false;
+      const pluginConfig = await strapi.config.get('plugin.elasticsearch');
 
-    return {
-      indexingCronSchedule: pluginConfig.indexingCronSchedule || 'Not configured',
-      elasticHost: pluginConfig.searchConnector ? pluginConfig.searchConnector.host || 'Not configured' : 'Not configured',
-      elasticUserName: pluginConfig.searchConnector ? pluginConfig.searchConnector.username || 'Not configured' : 'Not configured',
-      elasticCertificate: pluginConfig.searchConnector ? pluginConfig.searchConnector.certificate || 'Not configured' : 'Not configured',
-      elasticIndexAlias: pluginConfig.indexAliasName || 'Not configured',
-      connected: connected,
-      initialized: configureService.isInitialized(),
-    };
-  },
-  isCollectionDraftPublish({ collectionName }) {
-    const model = strapi.getModel(collectionName);
-    return model.attributes.publishedAt ? true : false;
-  },
-  getPopulateAttribute({ collectionName }) {
-    //TODO : We currently have set populate to upto 4 levels, should
-    //this be configurable or a different default value?
-    return getFullPopulateObject(collectionName, 4, []);
-  },
-  getIndexItemId({ collectionName, itemId }) {
-    return collectionName + '::' + itemId;
-  },
-  async getCurrentIndexName(indexPrefix: string = defaultIndexPrefix) {
-    const pluginStore = getPluginStore();
-    const settings = (await pluginStore.get({ key: 'configsettings' })) as string | null | undefined;
-    let indexName = indexPrefix + '_000001';
-    if (settings) {
-      const objSettings = JSON.parse(settings);
-      if (Object.keys(objSettings).includes('indexConfig')) {
-        const idxConfig = objSettings['indexConfig'];
-        if (idxConfig[indexPrefix]) {
-          indexName = idxConfig[indexPrefix];
-        }
-      }
-    }
-    return indexName;
-  },
-  async getIncrementedIndexName(indexPrefix: string = defaultIndexPrefix) {
-    const currentIndexName = await this.getCurrentIndexName(indexPrefix);
-    const number = parseInt(currentIndexName.split(indexPrefix + '_')[1]);
-    return indexPrefix + '_' + String(number + 1).padStart(6, '0');
-  },
-  async storeCurrentIndexName(indexName, indexPrefix = defaultIndexPrefix) {
-    const pluginStore = getPluginStore();
-    const settings = (await pluginStore.get({ key: 'configsettings' })) as string | null | undefined;
-    if (settings) {
-      const objSettings = JSON.parse(settings);
-      objSettings['indexConfig'] = {
-        ...objSettings['indexConfig'],
-        [indexPrefix]: indexName,
+      const connected = pluginConfig.searchConnector && pluginConfig.searchConnector.host ? await getEsInterface().checkESConnection() : false;
+
+      return {
+        indexingCronSchedule: pluginConfig.indexingCronSchedule || 'Not configured',
+        elasticHost: pluginConfig.searchConnector ? pluginConfig.searchConnector.host || 'Not configured' : 'Not configured',
+        elasticUserName: pluginConfig.searchConnector ? pluginConfig.searchConnector.username || 'Not configured' : 'Not configured',
+        elasticCertificate: pluginConfig.searchConnector ? pluginConfig.searchConnector.certificate || 'Not configured' : 'Not configured',
+        elasticIndexAlias: pluginConfig.indexAliasName || 'Not configured',
+        connected: connected,
+        initialized: configureService.isInitialized(),
       };
-      await pluginStore.set({ key: 'configsettings', value: JSON.stringify(objSettings) });
-    } else {
-      const newSettings = JSON.stringify({ indexConfig: { [indexPrefix]: indexName } });
-      await pluginStore.set({ key: 'configsettings', value: newSettings });
-    }
-  },
-  modifySubfieldsConfigForExtractor(collectionConfig) {
-    const collectionName = Object.keys(collectionConfig)[0];
-    const attributes = Object.keys(collectionConfig[collectionName]);
-    for (let r = 0; r < attributes.length; r++) {
-      const attr = attributes[r];
-      const attribFields = Object.keys(collectionConfig[collectionName][attr]);
-      if (attribFields.includes('subfields')) {
-        const subfielddata = collectionConfig[collectionName][attr]['subfields'];
-        if (subfielddata.length > 0) {
-          try {
-            const subfieldjson = JSON.parse(subfielddata);
-            if (Object.keys(subfieldjson).includes('subfields')) collectionConfig[collectionName][attr]['subfields'] = subfieldjson['subfields'];
-          } catch (err) {
-            continue;
+    },
+    isCollectionDraftPublish({ collectionName }) {
+      const model = strapi.getModel(collectionName);
+      return model.attributes.publishedAt ? true : false;
+    },
+    getPopulateAttribute({ collectionName }) {
+      //TODO : We currently have set populate to upto 4 levels, should
+      //this be configurable or a different default value?
+      return getFullPopulateObject(collectionName, 4, []);
+    },
+    getIndexItemId({ collectionName, itemId }) {
+      return collectionName + '::' + itemId;
+    },
+    async getCurrentIndexName(indexPrefix: string = defaultIndexPrefix) {
+      const indices = await getEsInterface().listIndicesByPattern(indexPrefix + '_*');
+      if (indices.length === 0) {
+        return indexPrefix + '_000000';
+      }
+      const sortedIndices = indices.sort(sortByIndexNumber(indexPrefix)).reverse();
+      return sortedIndices[0];
+    },
+    async getIncrementedIndexName(indexPrefix: string = defaultIndexPrefix) {
+      const currentIndexName = await this.getCurrentIndexName(indexPrefix);
+      const number = parseInt(currentIndexName.split(indexPrefix + '_')[1]);
+      return indexPrefix + '_' + String(number + 1).padStart(6, '0');
+    },
+
+    async deleteOldIndices(indexPrefix: string = defaultIndexPrefix) {
+      const esInterface = getEsInterface();
+      const indices = await esInterface.listIndicesByPattern(indexPrefix + '_*');
+      const sortedIndices = indices.sort(sortByIndexNumber(indexPrefix)).reverse();
+      const indicesToDelete = sortedIndices.slice(1);
+      for (let index of indicesToDelete) {
+        await esInterface.deleteIndex(index);
+      }
+      return indicesToDelete.length;
+    },
+
+    modifySubfieldsConfigForExtractor(collectionConfig) {
+      const collectionName = Object.keys(collectionConfig)[0];
+      const attributes = Object.keys(collectionConfig[collectionName]);
+      for (let r = 0; r < attributes.length; r++) {
+        const attr = attributes[r];
+        const attribFields = Object.keys(collectionConfig[collectionName][attr]);
+        if (attribFields.includes('subfields')) {
+          const subfielddata = collectionConfig[collectionName][attr]['subfields'];
+          if (subfielddata.length > 0) {
+            try {
+              const subfieldjson = JSON.parse(subfielddata);
+              if (Object.keys(subfieldjson).includes('subfields')) collectionConfig[collectionName][attr]['subfields'] = subfieldjson['subfields'];
+            } catch (err) {
+              continue;
+            }
           }
         }
       }
-    }
-    return collectionConfig;
-  },
-  extractDataToIndex({ collectionName, data, collectionConfig }) {
-    collectionConfig = this.modifySubfieldsConfigForExtractor(collectionConfig);
-    const fti = Object.keys(collectionConfig[collectionName]);
-    const document = {};
-    for (let k = 0; k < fti.length; k++) {
-      const fieldConfig = collectionConfig[collectionName][fti[k]];
-      if (fieldConfig.index) {
-        let val: string | null = null;
-        if (Object.keys(fieldConfig).includes('subfields')) {
-          val = extractSubfieldData({ config: fieldConfig['subfields'], data: data[fti[k]] });
-          val = val ? val.trim() : val;
-        } else {
-          val = data[fti[k]];
-          if (Object.keys(fieldConfig).includes('transform') && fieldConfig['transform'] === 'markdown')
-            val = transformServiceProvider.transform({ content: val, from: 'markdown' });
-        }
+      return collectionConfig;
+    },
+    extractDataToIndex({ collectionName, data, collectionConfig }) {
+      collectionConfig = this.modifySubfieldsConfigForExtractor(collectionConfig);
+      const fti = Object.keys(collectionConfig[collectionName]);
+      const document = {};
+      for (let k = 0; k < fti.length; k++) {
+        const fieldConfig = collectionConfig[collectionName][fti[k]];
+        if (fieldConfig.index) {
+          let val: string | null = null;
+          if (Object.keys(fieldConfig).includes('subfields')) {
+            val = extractSubfieldData({ config: fieldConfig['subfields'], data: data[fti[k]] });
+            val = val ? val.trim() : val;
+          } else {
+            val = data[fti[k]];
+            if (Object.keys(fieldConfig).includes('transform') && fieldConfig['transform'] === 'markdown')
+              val = transformServiceProvider.transform({ content: val, from: 'markdown' });
+          }
 
-        if (Object.keys(fieldConfig).includes('searchFieldName')) document[fieldConfig['searchFieldName']] = val;
-        else document[fti[k]] = val;
+          if (Object.keys(fieldConfig).includes('searchFieldName')) document[fieldConfig['searchFieldName']] = val;
+          else document[fti[k]] = val;
+        }
       }
-    }
-    return document;
-  },
-});
+      return document;
+    },
+  };
+};
+
+/**
+ * sort index names by index number, e.g:
+ * restaurants_000001, restaurants_000002, restaurants_000003
+ * @param indexPrefix index alias, usually
+ * @returns
+ */
+function sortByIndexNumber(indexPrefix: string): ((a: string, b: string) => number) | undefined {
+  return (a, b) => {
+    const numA = parseInt(a.split(indexPrefix + '_')[1]);
+    const numB = parseInt(b.split(indexPrefix + '_')[1]);
+    return numA - numB;
+  };
+}

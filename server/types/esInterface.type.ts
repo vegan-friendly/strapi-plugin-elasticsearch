@@ -65,4 +65,6 @@ export interface EsInterfaceService {
    * @returns A promise that resolves with the search results.
    */
   searchData(searchQuery: any): Promise<any>;
+
+  listIndicesByPattern(pattern: string): Promise<string[]>;
 }

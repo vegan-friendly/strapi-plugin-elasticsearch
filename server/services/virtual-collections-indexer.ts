@@ -110,8 +110,7 @@ export default ({ strapi }): VirtualCollectionsIndexerService => {
         strapi.log.info(`Done attachAliasToIndex alias ${indexAlias} to index ${newIndexName}. took ${humanizeDuration(Date.now() - timestamp)}`);
 
         timestamp = Date.now();
-        await helper.storeCurrentIndexName(newIndexName, indexAlias);
-        await esInterface.deleteIndex(oldIndexName);
+        await helper.deleteOldIndices(indexAlias);
         strapi.log.info(`Done deleting ${oldIndexName}. took ${humanizeDuration(Date.now() - timestamp)}`);
 
         return totalIndexed;
