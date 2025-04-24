@@ -4,6 +4,7 @@ import { isEmpty, merge } from 'lodash/fp';
 import transformServiceProvider from './transform-content';
 import { EsInterfaceService } from '../types';
 import esInterface from './es-interface';
+import { HelperService } from '../types/helper-service.type';
 
 const defaultIndexPrefix = 'strapi-plugin-elasticsearch-index';
 
@@ -26,7 +27,7 @@ const getFullPopulateObject = (modelUid, maxDepth = 20, ignore?) => {
     return undefined;
   }
 
-  const populate = {};
+  const populate: object = {};
   const model = strapi.getModel(modelUid);
   if (ignore && !ignore.includes(model.collectionName)) ignore.push(model.collectionName);
   for (const [key, valueRaw] of Object.entries(getModelPopulationAttributes(model))) {
@@ -156,7 +157,7 @@ function extractSubfieldData({ config, data }) {
   return returnData;
 }
 
-export default ({ strapi }) => {
+export default ({ strapi }): HelperService => {
   const getEsInterface: () => EsInterfaceService = () => strapi.plugins['elasticsearch'].services.esInterface;
   return {
     async getElasticsearchInfo() {
@@ -180,7 +181,7 @@ export default ({ strapi }) => {
       const model = strapi.getModel(collectionName);
       return model.attributes.publishedAt ? true : false;
     },
-    getPopulateAttribute({ collectionName }) {
+    getPopulateAttribute({ collectionName }): true | { populate: any } | undefined {
       //TODO : We currently have set populate to upto 4 levels, should
       //this be configurable or a different default value?
       return getFullPopulateObject(collectionName, 4, []);
@@ -210,7 +211,7 @@ export default ({ strapi }) => {
       for (let index of indicesToDelete) {
         await esInterface.deleteIndex(index);
       }
-      return indicesToDelete.length;
+      return indicesToDelete;
     },
 
     modifySubfieldsConfigForExtractor(collectionConfig) {

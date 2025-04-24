@@ -1,5 +1,6 @@
 import humanizeDuration from 'humanize-duration';
 import { EsInterfaceService, VirtualCollectionsIndexerService, VirtualCollectionsRegistryService, VirtualCollectionConfig } from '../types';
+import { HelperService } from '../types/helper-service.type';
 
 /**
  * Service to handle indexing of virtual collections
@@ -7,7 +8,7 @@ import { EsInterfaceService, VirtualCollectionsIndexerService, VirtualCollection
 export default ({ strapi }): VirtualCollectionsIndexerService => {
   const getElasticsearchService = (): EsInterfaceService => strapi.plugin('elasticsearch').service('esInterface');
   const getRegistryService = (): VirtualCollectionsRegistryService => strapi.service('plugin::elasticsearch.virtualCollectionsRegistry');
-  const getHelperService = () => strapi.plugins['elasticsearch'].services.helper;
+  const getHelperService: () => HelperService = () => strapi.plugins['elasticsearch'].services.helper;
 
   return {
     /**
@@ -33,8 +34,8 @@ export default ({ strapi }): VirtualCollectionsIndexerService => {
 
         const esInterface = getElasticsearchService();
         const helper = getHelperService();
-        const indexItemId = helper.getIndexItemId(collectionName, itemId);
-        const indexName = await helper.getCurrentIndexName();
+        const indexItemId = helper.getIndexItemId({ collectionName, itemId });
+        const indexName = await helper.getCurrentIndexName(collection.indexAlias);
         await esInterface.indexDataToSpecificIndex({ itemId: indexItemId, itemData }, indexName);
 
         strapi.log.debug(`Indexed virtual item: ${collectionName}:${itemId}`);
@@ -66,17 +67,21 @@ export default ({ strapi }): VirtualCollectionsIndexerService => {
      */
     async reindex<T extends { id: number }>(collection: VirtualCollectionConfig<T>) {
       const collectionName = collection.collectionName;
-      const indexAlias = collection.indexAlias;
+      const privateIndexAlias: string | undefined = collection.indexAlias;
 
       const helper = getHelperService();
-      const oldIndexName = await helper.getCurrentIndexName(indexAlias);
-      const newIndexName = await helper.getIncrementedIndexName(indexAlias);
 
       let timestamp = Date.now();
       try {
         const esInterface = getElasticsearchService();
 
-        await esInterface.createIndex(newIndexName, collection.mappings);
+        let indexName: string;
+        if (privateIndexAlias) {
+          indexName = await helper.getIncrementedIndexName(privateIndexAlias);
+          await esInterface.createIndex(indexName, collection.mappings);
+        } else {
+          indexName = await helper.getCurrentIndexName();
+        }
 
         let page = 0;
         let hasMoreData = true;
@@ -97,7 +102,7 @@ export default ({ strapi }): VirtualCollectionsIndexerService => {
           }
 
           if (operations.length > 0) {
-            await Promise.all(operations.map((op) => esInterface.indexDataToSpecificIndex(op, newIndexName)));
+            await Promise.all(operations.map((op) => esInterface.indexDataToSpecificIndex(op, indexName)));
           }
 
           totalIndexed += pageData.length;
@@ -105,13 +110,15 @@ export default ({ strapi }): VirtualCollectionsIndexerService => {
         }
         strapi.log.info(`Reindexed ${totalIndexed} items for virtual collection: ${collectionName}. took ${humanizeDuration(Date.now() - timestamp)}. now updating alias.`);
 
-        timestamp = Date.now();
-        await esInterface.attachAliasToIndex(newIndexName, indexAlias, collection.mappings);
-        strapi.log.info(`Done attachAliasToIndex alias ${indexAlias} to index ${newIndexName}. took ${humanizeDuration(Date.now() - timestamp)}`);
+        if (privateIndexAlias) {
+          timestamp = Date.now();
+          await esInterface.attachAliasToIndex(indexName, privateIndexAlias, collection.mappings);
+          strapi.log.info(`Done attachAliasToIndex alias ${privateIndexAlias} to index ${indexName}. took ${humanizeDuration(Date.now() - timestamp)}`);
 
-        timestamp = Date.now();
-        await helper.deleteOldIndices(indexAlias);
-        strapi.log.info(`Done deleting ${oldIndexName}. took ${humanizeDuration(Date.now() - timestamp)}`);
+          timestamp = Date.now();
+          const oldIndicesDeleted = await helper.deleteOldIndices(privateIndexAlias);
+          strapi.log.info(`Done deleting ${oldIndicesDeleted.length} old indices: ${oldIndicesDeleted}. took ${humanizeDuration(Date.now() - timestamp)}`);
+        }
 
         return totalIndexed;
       } catch (error: any) {

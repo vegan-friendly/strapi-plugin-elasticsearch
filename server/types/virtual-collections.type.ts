@@ -4,12 +4,16 @@ import { MappingTypeMapping } from '@elastic/elasticsearch/lib/api/types';
 
 export type VirtualCollectionConfig<T extends StrapiEntity> = {
   /**
+   * Optional -
    * The alias of the latest index in Elasticsearch.
    * It also serves as a prefix to actual indexes created in Elasticsearch.
    * The actuall index name will be the `${indexNameBase}_${ind}`, e.g `restaurants_000001` and so on.
    * and the alias will be the `indexNameBase`.
+   *
+   * If you don't provide this, the default index name will be used as the alias.
+   * Omit this property if you want to use the default index for all collections.
    */
-  indexAlias: string;
+  indexAlias?: string;
   collectionName: string;
   extractData: (page: number, pageSize?: number) => Promise<T[]>;
   extractById: (ids: number[]) => Promise<T[]>;
