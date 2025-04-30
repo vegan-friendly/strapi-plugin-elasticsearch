@@ -13,8 +13,8 @@ export interface HelperService {
     isCollectionDraftPublish(args: { collectionName: string }): boolean;
     getPopulateAttribute(args: { collectionName: string }): true | { populate: object; } | undefined;
     getIndexItemId(args: { collectionName: string; itemId: number }): string;
-    getCurrentIndexName(indexAlias?: string): Promise<string>;
-    getIncrementedIndexName(indexPrefix: string): Promise<string>;
+    getCurrentIndexName(indexPrefix?: string): Promise<string>;
+    getIncrementedIndexName(indexPrefix?: string): Promise<string>;
     deleteOldIndices(indexAlias?: string): Promise<string[]>;
     modifySubfieldsConfigForExtractor(collectionConfig: object): object;
     extractDataToIndex(args: { collectionName: string; data: object; collectionConfig: object }): any;

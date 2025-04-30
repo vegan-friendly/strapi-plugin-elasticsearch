@@ -108,7 +108,8 @@ export default ({ strapi }): EsInterfaceService => ({
         id: itemId,
         document: itemData,
       });
-      await client!.indices.refresh({ index: iName });
+      //indices.refresh is an expensive operation. and ES is doing this once a second anyway (see https://www.elastic.co/guide/en/elasticsearch/reference/8.17/indices-refresh.html)
+      // await client!.indices.refresh({ index: iName });
     } catch (err) {
       console.log('strapi-plugin-elasticsearch : Error encountered while indexing data to ElasticSearch.');
       console.log(err);
@@ -119,14 +120,13 @@ export default ({ strapi }): EsInterfaceService => ({
     const pluginConfig = await strapi.config.get('plugin.elasticsearch');
     return await this.indexDataToSpecificIndex({ itemId, itemData }, pluginConfig.indexAliasName);
   },
-  async removeItemFromIndex({ itemId }) {
-    const pluginConfig = await strapi.config.get('plugin.elasticsearch');
+  async removeItemFromIndex({ indexName, itemId }) {
     try {
       await client!.delete({
-        index: pluginConfig.indexAliasName,
+        index: indexName,
         id: itemId,
       });
-      await client!.indices.refresh({ index: pluginConfig.indexAliasName });
+      await client!.indices.refresh({ index: indexName });
     } catch (err: any) {
       if (err?.meta?.statusCode === 404) console.error('strapi-plugin-elasticsearch : The entry to be removed from the index already does not exist.');
       else {

@@ -57,7 +57,7 @@ export interface EsInterfaceService {
    * @param data - An object containing the itemId.
    * @returns A promise that resolves when the item is removed.
    */
-  removeItemFromIndex(data: { itemId: string }): Promise<any>;
+  removeItemFromIndex(data: { indexName: string; itemId: string }): Promise<any>;
 
   /**
    * Searches data in the search engine.

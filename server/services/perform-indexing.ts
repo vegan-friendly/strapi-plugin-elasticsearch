@@ -1,8 +1,9 @@
 import { EsInterfaceService } from '../types';
+import { HelperService } from '../types/helper-service.type';
 
 export default ({ strapi }) => ({
   async rebuildIndex() {
-    const helper = strapi.plugins['elasticsearch'].services.helper;
+    const helper: HelperService = strapi.plugins['elasticsearch'].services.helper;
     const esInterface: EsInterfaceService = strapi.plugins['elasticsearch'].services.esInterface;
     const scheduleIndexingService = strapi.plugins['elasticsearch'].services.scheduleIndexing;
     const configureIndexingService = strapi.plugins['elasticsearch'].services.configureIndexing;
@@ -55,7 +56,7 @@ export default ({ strapi }) => ({
       throw err;
     }
   },
-  async indexCollection(collectionName, indexName = null) {
+  async indexCollection(collectionName, indexName: string | null = null) {
     const helper = strapi.plugins['elasticsearch'].services.helper;
     const populateAttrib = helper.getPopulateAttribute({ collectionName });
     const isCollectionDraftPublish = helper.isCollectionDraftPublish({ collectionName });
@@ -105,6 +106,7 @@ export default ({ strapi }) => ({
     const logIndexingService = strapi.plugins['elasticsearch'].services.logIndexing;
     const esInterface: EsInterfaceService = strapi.plugins['elasticsearch'].services.esInterface;
     const helper = strapi.plugins['elasticsearch'].services.helper;
+    const indexAlias = await strapi.config.get('plugin.elasticsearch').indexAliasName;
     const recs = await scheduleIndexingService.getItemsPendingToBeIndexed();
     const fullSiteIndexing = recs.filter((r) => r.full_site_indexing === true).length > 0;
     if (fullSiteIndexing) {
@@ -138,7 +140,7 @@ export default ({ strapi }) => ({
                   collectionName: col,
                   itemId: recs[r].item_id,
                 });
-                await esInterface.removeItemFromIndex({ itemId: indexItemId });
+                await esInterface.removeItemFromIndex({ indexName: indexAlias, itemId: indexItemId });
                 await scheduleIndexingService.markIndexingTaskComplete(recs[r].id);
               }
             } //index the entire collection

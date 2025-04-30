@@ -16,7 +16,7 @@ export type VirtualCollectionConfig<T extends StrapiEntity> = {
   indexAlias?: string;
   collectionName: string;
   extractData: (page: number, pageSize?: number) => Promise<T[]>;
-  extractById: (ids: number[]) => Promise<T[]>;
+  extractByIds: (ids: number[]) => Promise<T[]>;
   triggers: Array<{
     collection: string;
     getIdsToReindex: (result) => Promise<number[]>;
@@ -79,5 +79,5 @@ export interface VirtualCollectionsIndexerService {
    * @param itemId - The id of the item to be deleted.
    * @returns A promise that resolves to a boolean indicating success.
    */
-  deleteItem(collectionName: string, itemId: string): Promise<boolean>;
+  deleteItem(collectionName: string, itemId: number): Promise<boolean>;
 }

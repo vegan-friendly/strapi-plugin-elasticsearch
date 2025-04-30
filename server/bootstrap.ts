@@ -1,15 +1,17 @@
 'use strict';
 
-import { VirtualCollectionsRegistryService } from './types/virtual-collections.type';
+import { EsInterfaceService } from './types';
+import { HelperService } from './types/helper-service.type';
+import { VirtualCollectionsIndexerService, VirtualCollectionsRegistryService } from './types/virtual-collections.type';
 
 export default async ({ strapi }) => {
   const pluginConfig = await strapi.config.get('plugin.elasticsearch');
   const configureIndexingService = strapi.plugins['elasticsearch'].services.configureIndexing;
   const scheduleIndexingService = strapi.plugins['elasticsearch'].services.scheduleIndexing;
-  const esInterface = strapi.plugins['elasticsearch'].services.esInterface;
+  const esInterface: EsInterfaceService = strapi.plugins['elasticsearch'].services.esInterface;
   const indexer = strapi.plugins['elasticsearch'].services.indexer;
-  const helper = strapi.plugins['elasticsearch'].services.helper;
-  const virtualCollectionIndexer = strapi.plugins['elasticsearch'].services.virtualCollectionsIndexer;
+  const helper: HelperService = strapi.plugins['elasticsearch'].services.helper;
+  const virtualCollectionIndexer: VirtualCollectionsIndexerService = strapi.plugins['elasticsearch'].services.virtualCollectionsIndexer;
 
   try {
     await configureIndexingService.initializeStrapiElasticsearch();

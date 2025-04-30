@@ -23,7 +23,7 @@ export default ({ strapi }): VirtualCollectionsIndexerService => {
       }
 
       try {
-        const results = await collection.extractById([itemId]);
+        const results = await collection.extractByIds([itemId]);
 
         if (!results || !Array.isArray(results) || results.length === 0) {
           strapi.log.warn(`No data extracted for ${collectionName} with ID ${itemId}`);
@@ -135,18 +135,28 @@ export default ({ strapi }): VirtualCollectionsIndexerService => {
       const registry = getRegistryService();
 
       // Find virtual collections that should be triggered by this model
-      const affectedCollections = registry.findTriggersByCollection(model);
+      const affectedCollections = registry.findTriggersByCollection(model.uid);
 
       for (const collection of affectedCollections) {
         // Find the specific trigger for this collection
-        const trigger = collection.triggers.find((t) => t.collection === model);
+        const trigger = collection.triggers.find((t) => t.collection === model.uid);
+        const triggerIsOnIndexCollection = model.uid === collection.collectionName;
 
-        if (trigger && trigger.getIdsToReindex) {
-          // Get IDs that need to be reindexed
-          const idsToReindex = await trigger.getIdsToReindex(result);
+        if (trigger?.getIdsToReindex == null) {
+          strapi.log.error(`Trigger for ${collection.collectionName} (triggered by ${model.uid}) does not have getIdsToReindex function.`);
+          return;
+        }
 
-          // Reindex each item
-          for (const id of idsToReindex) {
+        // Get IDs that need to be reindexed
+        const idsToReindex = await trigger.getIdsToReindex(result);
+
+        // Reindex each item
+        for (const id of idsToReindex) {
+          const isDelete = event.action?.toLowerCase()?.includes('delete') && triggerIsOnIndexCollection && id === result.id;
+          if (isDelete) {
+            //delete the item from the index, if the item being delete is the one being reindexed
+            await this.deleteItem(collection.collectionName, id);
+          } else {
             await this.indexItem(collection.collectionName, id);
           }
         }
@@ -158,6 +168,7 @@ export default ({ strapi }): VirtualCollectionsIndexerService => {
      */
     async deleteItem(collectionName, itemId) {
       const registry = getRegistryService();
+      const helper = getHelperService();
       const collection = registry.get(collectionName);
 
       if (!collection) {
@@ -166,7 +177,9 @@ export default ({ strapi }): VirtualCollectionsIndexerService => {
 
       try {
         const esInterface = getElasticsearchService();
-        await esInterface.removeItemFromIndex({ itemId });
+        const indexItemId = helper.getIndexItemId({ collectionName, itemId });
+        const indexName = collection.indexAlias || (await helper.getCurrentIndexName());
+        await esInterface.removeItemFromIndex({ indexName, itemId: indexItemId });
 
         strapi.log.debug(`Deleted indexed item: ${collectionName}:${itemId}`);
         return true;
