@@ -2,7 +2,7 @@
 
 import { MappingTypeMapping } from '@elastic/elasticsearch/lib/api/types';
 
-export type VirtualCollectionConfig<T extends StrapiEntity> = {
+export type VirtualCollectionConfig = {
   /**
    * Optional -
    * The alias of the latest index in Elasticsearch.
@@ -14,12 +14,42 @@ export type VirtualCollectionConfig<T extends StrapiEntity> = {
    * Omit this property if you want to use the default index for all collections.
    */
   indexAlias?: string;
+
+  /**
+   * The name of the virtual-collection.
+   * You can use whatever name you want, but it's recommended to use the underlying collection api name,
+   * e.g 'api::restaurants.restaurants'.
+   */
   collectionName: string;
-  extractData: (page: number, pageSize?: number) => Promise<T[]>;
-  extractByIds: (ids: number[]) => Promise<T[]>;
+  extractData: (page: number, pageSize?: number) => Promise<StrapiEntity[]>;
+  extractByIds: (ids: number[]) => Promise<StrapiEntity[]>;
+
+  /**
+   *  Optional -
+   * A function that takes an item and returns the id of the item to be used in the index.
+   * The default is <collectionName>::<itemId>
+   *
+   * @param itemId itemId in strapi
+   * @param collectionName collection name. you probably want to use this to create a unique id for the item, especially if it is saved to the default index.
+   * @returns the id of the item to be used in the index, _id. must be unique accross the index.
+   */
+  getIndexItemId?: (itemId: number, collectionName: string) => string;
   triggers: Array<{
+    /**
+     * collection name to listen to for changes.
+     */
     collection: string;
-    getIdsToReindex: (result) => Promise<number[]>;
+    /**
+     * gets an event on the given collection, and returns the ids of virtual-collection items to be reindexed.
+     * @param event - The event object containing the data to be indexed.
+     * @returns ids of the items to be reindexed.
+     */
+    getIdsToReindex: (event) => Promise<number[]>;
+    /**
+     * if true, and the trigger is a delete event, the item of the virtual collection will be deleted as well if the id returned from getIdsToReindex match.
+     * defaults to false.
+     */
+    alsoTriggerDelete?: boolean;
   }>;
 
   /**
@@ -31,19 +61,12 @@ export type VirtualCollectionConfig<T extends StrapiEntity> = {
 
 export interface VirtualCollectionsRegistryService {
   /**
-   * Register a virtual collection
-   * @param config - The configuration for the virtual collection
-   * @returns The current instance of the registry
-   */
-  register<T extends StrapiEntity>(config: VirtualCollectionConfig<T>): this;
-
-  /**
    * get all registered virtual collections
    * @returns An array of all registered virtual collections
    */
-  getAll(): Array<VirtualCollectionConfig<any>>;
-  get(collectionName: string): VirtualCollectionConfig<any> | null;
-  findTriggersByCollection(collectionUID: string): Array<VirtualCollectionConfig<any>>;
+  getAll(): Array<VirtualCollectionConfig>;
+  get(collectionName: string): VirtualCollectionConfig | null;
+  findTriggersByCollection(collectionUID: string): Array<VirtualCollectionConfig>;
 }
 
 export type StrapiEntity = { id: number; [key: string]: any };
@@ -65,7 +88,7 @@ export interface VirtualCollectionsIndexerService {
    * Reindex all items in a virtual collection.
    * @param collection - The virtual collection config.
    */
-  reindex<T extends StrapiEntity>(collection: VirtualCollectionConfig<T>): Promise<any>;
+  reindex(collection: VirtualCollectionConfig): Promise<any>;
 
   /**
    * Handle a trigger event from a collection.

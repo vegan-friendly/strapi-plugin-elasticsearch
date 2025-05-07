@@ -1,5 +1,5 @@
 import humanizeDuration from 'humanize-duration';
-import { EsInterfaceService, VirtualCollectionsIndexerService, VirtualCollectionsRegistryService, VirtualCollectionConfig } from '../types';
+import { EsInterfaceService, VirtualCollectionsIndexerService, VirtualCollectionsRegistryService, VirtualCollectionConfig, StrapiEntity } from '../types';
 import { HelperService } from '../types/helper-service.type';
 
 /**
@@ -34,7 +34,7 @@ export default ({ strapi }): VirtualCollectionsIndexerService => {
 
         const esInterface = getElasticsearchService();
         const helper = getHelperService();
-        const indexItemId = helper.getIndexItemId({ collectionName, itemId });
+        const indexItemId = collection.getIndexItemId!(itemId, collectionName);
         const indexName = await helper.getCurrentIndexName(collection.indexAlias);
         await esInterface.indexDataToSpecificIndex({ itemId: indexItemId, itemData }, indexName);
 
@@ -65,7 +65,7 @@ export default ({ strapi }): VirtualCollectionsIndexerService => {
     /**
      * Reindex all items in a virtual collection
      */
-    async reindex<T extends { id: number }>(collection: VirtualCollectionConfig<T>) {
+    async reindex(collection: VirtualCollectionConfig) {
       const collectionName = collection.collectionName;
       const privateIndexAlias: string | undefined = collection.indexAlias;
 
@@ -97,7 +97,7 @@ export default ({ strapi }): VirtualCollectionsIndexerService => {
 
           const operations: { itemId: string; itemData: any }[] = [];
           for (const itemData of pageData) {
-            const itemId = helper.getIndexItemId({ collectionName, itemId: itemData.id });
+            const itemId = collection.getIndexItemId!(itemData.id, collectionName);
             operations.push({ itemId, itemData });
           }
 
@@ -140,7 +140,6 @@ export default ({ strapi }): VirtualCollectionsIndexerService => {
       for (const collection of affectedCollections) {
         // Find the specific trigger for this collection
         const trigger = collection.triggers.find((t) => t.collection === model.uid);
-        const triggerIsOnIndexCollection = model.uid === collection.collectionName;
 
         if (trigger?.getIdsToReindex == null) {
           strapi.log.error(`Trigger for ${collection.collectionName} (triggered by ${model.uid}) does not have getIdsToReindex function.`);
@@ -152,7 +151,7 @@ export default ({ strapi }): VirtualCollectionsIndexerService => {
 
         // Reindex each item
         for (const id of idsToReindex) {
-          const isDelete = event.action?.toLowerCase()?.includes('delete') && triggerIsOnIndexCollection && id === result.id;
+          const isDelete = event.action?.toLowerCase()?.includes('delete') && trigger.alsoTriggerDelete && id === result.id;
           if (isDelete) {
             //delete the item from the index, if the item being delete is the one being reindexed
             await this.deleteItem(collection.collectionName, id);
@@ -177,7 +176,7 @@ export default ({ strapi }): VirtualCollectionsIndexerService => {
 
       try {
         const esInterface = getElasticsearchService();
-        const indexItemId = helper.getIndexItemId({ collectionName, itemId });
+        const indexItemId = collection.getIndexItemId!(itemId, collectionName);
         const indexName = collection.indexAlias || (await helper.getCurrentIndexName());
         await esInterface.removeItemFromIndex({ indexName, itemId: indexItemId });
 

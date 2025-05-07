@@ -160,8 +160,11 @@ export default async ({ strapi }) => {
     });
 
     configureIndexingService.markInitialized();
-  } catch (err) {
+  } catch (err: any) {
     console.error('An error was encountered while initializing the strapi-plugin-elasticsearch plugin.');
+    if (err.name == 'ValidationError') {
+      throw err; // fail strapi startup if the config is invalid
+    }
     console.error(err);
   }
 };

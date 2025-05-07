@@ -40,7 +40,8 @@
     "@elastic/elasticsearch": "^8.9.0",
     "@strapi/design-system": "^1.19.0",
     "humanize-duration": "^3.32.1",
-    "markdown-to-txt": "^2.0.1"
+    "markdown-to-txt": "^2.0.1",
+    "yup": "^1.6.1"
   },
   "peerDependencies": {
     "@strapi/strapi": "^4.0.0"

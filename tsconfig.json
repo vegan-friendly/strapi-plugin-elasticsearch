@@ -1,14 +1,15 @@
 {
-  "extends": "@strapi/typescript-utils/tsconfigs/admin",
+  // "extends": "@strapi/typescript-utils/tsconfigs/admin",
 
   "compilerOptions": {
     "outDir": "./dist",
     "rootDir": ".",
     "target": "ESNext",
-    "noEmit": false, //comment-out after resolving all build errors
+    // "noEmit": false,
     "module": "commonjs",
     "moduleResolution": "node",
     "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
     "skipLibCheck": true,
     "strict": true,
     "declaration": true,
