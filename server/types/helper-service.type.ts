@@ -19,14 +19,3 @@ export interface HelperService {
     modifySubfieldsConfigForExtractor(collectionConfig: object): object;
     extractDataToIndex(args: { collectionName: string; data: object; collectionConfig: object }): any;
 }
-
-let a: Record<string, unknown> = {
-    a: 1,
-};
-
-type NonRecordObject = {
-    foo: string;
-};
-
-const example: NonRecordObject = { foo: "bar" };
-a = example;
