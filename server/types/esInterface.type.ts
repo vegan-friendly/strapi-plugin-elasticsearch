@@ -1,4 +1,7 @@
 import { MappingTypeMapping } from '@elastic/elasticsearch/lib/api/types';
+import { ApiKeyAuth, BasicAuth, BearerAuth } from '@elastic/transport/lib/types';
+
+export type EsAuth = BasicAuth | ApiKeyAuth | BearerAuth;
 
 export interface EsInterfaceService {
   /**
@@ -6,7 +9,7 @@ export interface EsInterfaceService {
    * @param params - Connection parameters that include host, uname, password, and cert.
    * @returns A promise that resolves when the initialization is complete.
    */
-  initializeSearchEngine(params: { host: string; uname: string; password: string; cert: string }): Promise<void>;
+  initializeSearchEngine(params: { host: string; auth?: EsAuth; cert: string }): Promise<void>;
 
   /**
    * Creates an index in the search engine.

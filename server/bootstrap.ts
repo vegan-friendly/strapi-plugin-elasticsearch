@@ -1,6 +1,7 @@
 'use strict';
 
-import { EsInterfaceService } from './types';
+import { get } from 'http';
+import { EsAuth, EsInterfaceService } from './types';
 import { HelperService } from './types/helper-service.type';
 import { VirtualCollectionsIndexerService, VirtualCollectionsRegistryService } from './types/virtual-collections.type';
 
@@ -21,10 +22,10 @@ export default async ({ strapi }) => {
     if (!Object.keys(pluginConfig).includes('searchConnector')) console.warn('The plugin strapi-plugin-elasticsearch is enabled but the searchConnector is not configured.');
     else {
       const connector = pluginConfig['searchConnector'];
+      const auth = getAuth(connector);
       await esInterface.initializeSearchEngine({
         host: connector.host,
-        uname: connector.username,
-        password: connector.password,
+        auth,
         cert: connector.certificate,
       });
       strapi.cron.add({
@@ -168,3 +169,31 @@ export default async ({ strapi }) => {
     console.error(err);
   }
 };
+
+function getAuth(connector: any): EsAuth | undefined {
+  const { apiKey, username, password, bearer } = connector;
+  let auth: EsAuth | undefined;
+  let configTypes: string[] = [];
+
+  if (username && password) {
+    auth = { username, password };
+    configTypes.push('username/password');
+  }
+  if (bearer) {
+    auth = { bearer };
+    configTypes.push('bearer');
+  }
+  if (apiKey) {
+    auth = { apiKey };
+    configTypes.push('apiKey');
+  }
+
+  if (configTypes.length > 1) {
+    throw new Error('You cannot provide more than one authentication method. Please choose one of the following: ' + configTypes.join(', '));
+  }
+
+  if (!auth) {
+    throw new Error('No authentication method provided. Please provide one of the following: apiKey, bearer, username+password');
+  }
+  return auth!;
+}

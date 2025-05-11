@@ -7,14 +7,11 @@ import { MappingTypeMapping } from '@elastic/elasticsearch/lib/api/types';
 let client: Client | null = null;
 
 export default ({ strapi }): EsInterfaceService => ({
-  async initializeSearchEngine({ host, uname, password, cert }) {
+  async initializeSearchEngine({ host, auth, cert }) {
     try {
       client = new Client({
         node: host,
-        auth: {
-          username: uname,
-          password: password,
-        },
+        auth: auth,
         tls: {
           ca: cert,
           rejectUnauthorized: false,
