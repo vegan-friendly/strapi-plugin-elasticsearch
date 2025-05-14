@@ -1,5 +1,5 @@
 import humanizeDuration from 'humanize-duration';
-import { EsInterfaceService, VirtualCollectionsIndexerService, VirtualCollectionsRegistryService, VirtualCollectionConfig, StrapiEntity } from '../types';
+import { EsInterfaceService, VirtualCollectionsIndexerService, VirtualCollectionsRegistryService, VirtualCollectionConfig } from '../types';
 import { HelperService } from '../types/helper-service.type';
 
 /**

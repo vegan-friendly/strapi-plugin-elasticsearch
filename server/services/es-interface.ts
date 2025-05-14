@@ -146,11 +146,17 @@ export default ({ strapi }): EsInterfaceService => ({
     }
   },
   async listIndicesByPattern(pattern = 'restaurants*'): Promise<string[]> {
-    const results = await client!.cat.indices({
-      index: pattern,
-      format: 'json',
-    });
-
-    return results.map((index) => index.index).filter((index) => index != null);
+    try {
+      const results = await client!.cat.indices({
+        index: pattern,
+        format: 'json',
+      });
+      return results.map((index) => index.index).filter((index) => index != null);
+    } catch (err: any) {
+      if (err?.message?.includes('index_not_found_exception')) {
+        return [];
+      }
+      throw err;
+    }
   },
 });

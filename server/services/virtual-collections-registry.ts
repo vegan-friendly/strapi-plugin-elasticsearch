@@ -1,21 +1,31 @@
-import { StrapiEntity, VirtualCollectionConfig, VirtualCollectionsRegistryService } from '../types';
+import {
+  ExtractByIdsFunction,
+  ExtractDataFunction,
+  GetIdsToIndexFunction,
+  GetIndexItemIdFunction,
+  StrapiEntity,
+  VirtualCollectionConfig,
+  VirtualCollectionFactory,
+  VirtualCollectionsRegistryService,
+} from '../types';
 import * as yup from 'yup';
 import { HelperService } from '../types/helper-service.type';
 
-const isFunction = () => yup.mixed().test('is-function', `must be a function`, (value) => typeof value === 'function');
+const isFunction = <T extends {}>() => yup.mixed<T>().test('is-function', `must be a function`, (value) => typeof value === 'function');
 
 const configSchema = yup.object({
-  indexAlias: yup.string().nullable(),
+  indexAlias: yup.string().notRequired().nonNullable(),
   collectionName: yup.string().required(),
-  extractData: isFunction().required(),
-  extractByIds: isFunction().required(),
-  getIndexItemId: isFunction(),
+  extractData: isFunction<ExtractDataFunction>().required(),
+  extractByIds: isFunction<ExtractByIdsFunction>().required(),
+  getIndexItemId: isFunction<GetIndexItemIdFunction>(),
   triggers: yup
     .array()
+    .optional()
     .of(
       yup.object({
         collection: yup.string().required(),
-        getIdsToReindex: isFunction(),
+        getIdsToReindex: isFunction<GetIdsToIndexFunction>().required(),
         alsoTriggerDelete: yup.boolean().default(false),
       })
     )
@@ -42,9 +52,10 @@ export default ({ strapi }): VirtualCollectionsRegistryService => {
       if (!config) {
         const helper: HelperService = strapi.plugin('elasticsearch').service('helper');
         const defaultConf = configSchema.getDefault();
-        config = strapi.plugin('elasticsearch').config('virtualCollections') || [];
-        config = config.map((collection: VirtualCollectionConfig) => {
-          const collectionConfig = configSchema.validateSync(collection, { strict: true });
+        const virtualCollectionsFactories = strapi.plugin('elasticsearch').config('virtualCollections') || [];
+        config = virtualCollectionsFactories.map((factory: VirtualCollectionFactory) => {
+          let collectionConfig: VirtualCollectionConfig = factory(strapi);
+          collectionConfig = configSchema.validateSync(collectionConfig, { stripUnknown: true });
           collectionConfig.getIndexItemId = collectionConfig.getIndexItemId || ((id) => helper.getIndexItemId({ collectionName: collectionConfig.collectionName, itemId: id }));
           return { ...defaultConf, ...collectionConfig };
         });

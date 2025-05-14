@@ -2,6 +2,12 @@
 
 import { MappingTypeMapping } from '@elastic/elasticsearch/lib/api/types';
 
+export type VirtualCollectionFactory = (strapi) => VirtualCollectionConfig;
+export type ExtractByIdsFunction = (ids: number[]) => Promise<StrapiEntity[]>;
+export type ExtractDataFunction = (page: number, pageSize?: number) => Promise<StrapiEntity[]>;
+export type GetIndexItemIdFunction = (itemId: number, collectionName: string) => string;
+export type GetIdsToIndexFunction = (event) => Promise<number[]>;
+
 export type VirtualCollectionConfig = {
   /**
    * Optional -
@@ -21,8 +27,8 @@ export type VirtualCollectionConfig = {
    * e.g 'api::restaurants.restaurants'.
    */
   collectionName: string;
-  extractData: (page: number, pageSize?: number) => Promise<StrapiEntity[]>;
-  extractByIds: (ids: number[]) => Promise<StrapiEntity[]>;
+  extractData: ExtractDataFunction;
+  extractByIds: ExtractByIdsFunction;
 
   /**
    *  Optional -
@@ -33,7 +39,7 @@ export type VirtualCollectionConfig = {
    * @param collectionName collection name. you probably want to use this to create a unique id for the item, especially if it is saved to the default index.
    * @returns the id of the item to be used in the index, _id. must be unique accross the index.
    */
-  getIndexItemId?: (itemId: number, collectionName: string) => string;
+  getIndexItemId?: GetIndexItemIdFunction;
   triggers: Array<{
     /**
      * collection name to listen to for changes.
@@ -44,7 +50,7 @@ export type VirtualCollectionConfig = {
      * @param event - The event object containing the data to be indexed.
      * @returns ids of the items to be reindexed.
      */
-    getIdsToReindex: (event) => Promise<number[]>;
+    getIdsToReindex: GetIdsToIndexFunction;
     /**
      * if true, and the trigger is a delete event, the item of the virtual collection will be deleted as well if the id returned from getIdsToReindex match.
      * defaults to false.

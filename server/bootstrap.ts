@@ -31,7 +31,11 @@ export default async ({ strapi }) => {
       strapi.cron.add({
         elasticsearchIndexing: {
           task: async ({ strapi }) => {
-            await indexer.indexPendingData();
+            try {
+              await indexer.indexPendingData();
+            } catch (err) {
+              strapi.log.error('Error while indexing data: ', err);
+            }
           },
           options: {
             rule: pluginConfig['indexingCronSchedule'],
@@ -129,6 +133,16 @@ export default async ({ strapi }) => {
 
     // Setup lifecycle hooks
     const virtualCollections = registry.getAll();
+
+    // Check if indices exists, if not create them
+    virtualCollections.forEach(async (collection) => {
+      const indexName = await helper.getCurrentIndexName(collection.indexAlias);
+      const indexExists = await esInterface.listIndicesByPattern(indexName);
+      if (!indexExists.includes(indexName)) {
+        await esInterface.createIndex(indexName, collection.mappings);
+        strapi.log.info(`Created Elasticsearch index: ${indexName}`);
+      }
+    });
 
     // Create a set of all collections that need hooks
     const collectionsToHook = new Set();
