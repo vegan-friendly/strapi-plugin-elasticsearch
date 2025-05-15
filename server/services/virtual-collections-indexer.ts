@@ -1,5 +1,5 @@
 import humanizeDuration from 'humanize-duration';
-import { EsInterfaceService, VirtualCollectionsIndexerService, VirtualCollectionsRegistryService, VirtualCollectionConfig } from '../types';
+import { EsInterfaceService, VirtualCollectionsIndexerService, VirtualCollectionsRegistryService, VirtualCollectionConfig, StrapiEntity } from '../types';
 import { HelperService } from '../types/helper-service.type';
 
 /**
@@ -72,10 +72,10 @@ export default ({ strapi }): VirtualCollectionsIndexerService => {
       const helper = getHelperService();
 
       let timestamp = Date.now();
+      let indexName = '';
       try {
         const esInterface = getElasticsearchService();
 
-        let indexName: string;
         if (privateIndexAlias) {
           indexName = await helper.getIncrementedIndexName(privateIndexAlias);
           await esInterface.createIndex(indexName, collection.mappings);
@@ -84,15 +84,27 @@ export default ({ strapi }): VirtualCollectionsIndexerService => {
         }
 
         let page = 0;
-        let hasMoreData = true;
+        let prevPageData: StrapiEntity[] = [];
         let totalIndexed = 0;
 
-        while (hasMoreData) {
-          const pageData = await collection.extractData(page);
+        const pageLimit = 10000;
+        while (page <= pageLimit) {
+          const pageData: StrapiEntity[] = await collection.extractData(page);
+          strapi.log.debug(`Extracted ${pageData.length} items from ${collectionName} for page ${page}`);
 
           if (!Array.isArray(pageData) || pageData.length === 0) {
-            hasMoreData = false;
             break;
+          }
+          if (JSON.stringify(prevPageData) == JSON.stringify(pageData)) {
+            throw new Error(`Infinite loop detected at page ${page} while reindexing ${collectionName}. Stopping reindexing. Check this virtual-collection's extractData().
+  current page 1st item (id ${pageData[0]?.id}):
+  ${JSON.stringify(pageData[0])}
+  prev page 1st item (id ${prevPageData[0]?.id}):
+  ${JSON.stringify(prevPageData[0])}`);
+          }
+          if (page >= pageLimit) {
+            strapi.log.warn(`Page ${page} of ${collectionName} is greater than page-limit (${pageLimit}). stopping indexing this virtual-collection.`);
+            pageData.length = pageLimit;
           }
 
           const operations: { itemId: string; itemData: any }[] = [];
@@ -106,6 +118,7 @@ export default ({ strapi }): VirtualCollectionsIndexerService => {
           }
 
           totalIndexed += pageData.length;
+          prevPageData = pageData;
           page++;
         }
         strapi.log.info(`Reindexed ${totalIndexed} items for virtual collection: ${collectionName}. took ${humanizeDuration(Date.now() - timestamp)}. now updating alias.`);
@@ -122,7 +135,7 @@ export default ({ strapi }): VirtualCollectionsIndexerService => {
 
         return totalIndexed;
       } catch (error: any) {
-        strapi.log.error(`Error reindexing ${collectionName}: ${error?.message} after ${humanizeDuration(Date.now() - timestamp)}`);
+        strapi.log.error(`Error reindexing ${collectionName} to index ${indexName}: ${error?.message} after ${humanizeDuration(Date.now() - timestamp)}`);
         throw error;
       }
     },

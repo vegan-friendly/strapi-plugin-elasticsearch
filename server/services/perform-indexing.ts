@@ -1,36 +1,62 @@
-import { EsInterfaceService } from '../types';
+import { EsInterfaceService, VirtualCollectionsRegistryService } from '../types';
 import { HelperService } from '../types/helper-service.type';
 
 export default ({ strapi }) => ({
-  async rebuildIndex() {
+  async rebuildIndex(item: any = null) {
     const helper: HelperService = strapi.plugins['elasticsearch'].services.helper;
     const esInterface: EsInterfaceService = strapi.plugins['elasticsearch'].services.esInterface;
     const scheduleIndexingService = strapi.plugins['elasticsearch'].services.scheduleIndexing;
     const configureIndexingService = strapi.plugins['elasticsearch'].services.configureIndexing;
     const logIndexingService = strapi.plugins['elasticsearch'].services.logIndexing;
     const virtualCollectionsIndexer = strapi.plugins['elasticsearch'].services['virtualCollectionsIndexer'];
+    const virtualCollectionsRegistry: VirtualCollectionsRegistryService = strapi.plugins['elasticsearch'].services['virtualCollectionsRegistry'];
 
     try {
       console.log('strapi-plugin-elasticsearch : Request to rebuild the index received.');
+      const fullIndexingInProgress = await scheduleIndexingService.getFullIndexingInProgress();
+      if (fullIndexingInProgress.length > 0) {
+        const msg = `Indexing is already in progress - see tasks ${fullIndexingInProgress.map((t) => t.id)}. This request is ignored and marked as failed.`;
+        console.log('strapi-plugin-elasticsearch : ' + msg);
+        await logIndexingService.recordIndexingFail(msg);
+        return false;
+      }
+
+      const cols = await configureIndexingService.getCollectionsConfiguredForIndexing();
+      const needsNewIndex = cols.length > 0 || virtualCollectionsRegistry.getAll().some((vc) => vc.indexAlias == null);
+
       const oldIndexName = await helper.getCurrentIndexName();
       console.log('strapi-plugin-elasticsearch : Recording the previous index name : ', oldIndexName);
 
       //Step 1 : Create a new index
-      const newIndexName = await helper.getIncrementedIndexName();
-      await esInterface.createIndex(newIndexName);
-      console.log('strapi-plugin-elasticsearch : Created new index with name : ', newIndexName);
+      let newIndexName: string;
+      if (needsNewIndex) {
+        newIndexName = await helper.getIncrementedIndexName();
+        await esInterface.createIndex(newIndexName);
+        console.log('strapi-plugin-elasticsearch : Created new index with name : ', newIndexName);
+      } else {
+        newIndexName = oldIndexName;
+        console.log(
+          'strapi-plugin-elasticsearch : No need to create new index, as there are no collections to re-index, and no virtual-collections that use the default index. sticking to current index:',
+          newIndexName
+        );
+      }
 
       //Step 2 : Index all the stuff on this new index
       console.log('strapi-plugin-elasticsearch : Starting to index all data into the new index.');
-      const item = await scheduleIndexingService.addFullSiteIndexingTask();
+      if (item == null) {
+        item = await scheduleIndexingService.addFullSiteIndexingTask();
+      }
 
-      if (item.id) {
-        const cols = await configureIndexingService.getCollectionsConfiguredForIndexing();
-        for (let r = 0; r < cols.length; r++) await this.indexCollection(cols[r], newIndexName);
+      if (item?.id) {
+        await scheduleIndexingService.markIndexingTaskInProgress(item.id);
+        let entitiesIndexed = 0;
+        for (let r = 0; r < cols.length; r++) {
+          entitiesIndexed += await this.indexCollection(cols[r], newIndexName);
+        }
 
         // Indexing the virtual collections
-        console.log('strapi-plugin-elasticsearch : Starting to index virtual collections.');
-        const totalIndexed = await virtualCollectionsIndexer.reindexAll(newIndexName);
+        console.log('strapi-plugin-elasticsearch : Starting to index virtual collections. task id : ', item.id);
+        const virtualEntriesIndexed = await virtualCollectionsIndexer.reindexAll(newIndexName);
 
         await scheduleIndexingService.markIndexingTaskComplete(item.id);
 
@@ -42,7 +68,9 @@ export default ({ strapi }) => ({
         console.log('strapi-plugin-elasticsearch : Deleting the previous indices');
         //Step 5 : Delete the previous index
         await helper.deleteOldIndices();
-        await logIndexingService.recordIndexingPass('Request to immediately re-index site-wide content completed successfully.');
+        await logIndexingService.recordIndexingPass(
+          `Re-index site-wide content completed successfully. ${entitiesIndexed} entries indexed. ${virtualEntriesIndexed} virtual entries indexed.`
+        );
 
         return true;
       } else {
@@ -54,9 +82,13 @@ export default ({ strapi }) => ({
       console.log(err);
       await logIndexingService.recordIndexingFail(err);
       throw err;
+    } finally {
+      if (item?.id) {
+        await scheduleIndexingService.markIndexingTaskComplete(item.id);
+      }
     }
   },
-  async indexCollection(collectionName, indexName: string | null = null) {
+  async indexCollection(collectionName, indexName: string | null = null): Promise<number> {
     const helper = strapi.plugins['elasticsearch'].services.helper;
     const populateAttrib = helper.getPopulateAttribute({ collectionName });
     const isCollectionDraftPublish = helper.isCollectionDraftPublish({ collectionName });
@@ -98,7 +130,7 @@ export default ({ strapi }) => ({
         await esInterface.indexDataToSpecificIndex({ itemId: indexItemId, itemData: dataToIndex }, indexName);
       }
     }
-    return true;
+    return entries.length ?? 0;
   },
   async indexPendingData() {
     const scheduleIndexingService = strapi.plugins['elasticsearch'].services.scheduleIndexing;
@@ -108,15 +140,20 @@ export default ({ strapi }) => ({
     const helper = strapi.plugins['elasticsearch'].services.helper;
     const indexAlias = await strapi.config.get('plugin.elasticsearch').indexAliasName;
     const recs = await scheduleIndexingService.getItemsPendingToBeIndexed();
-    const fullSiteIndexing = recs.filter((r) => r.full_site_indexing === true).length > 0;
+    const fullSiteIndexTasks = recs.filter((r) => r.full_site_indexing === true);
+    const fullSiteIndexing = fullSiteIndexTasks.length > 0;
     if (fullSiteIndexing) {
-      await this.rebuildIndex();
-      for (let r = 0; r < recs.length; r++) await scheduleIndexingService.markIndexingTaskComplete(recs[r].id);
+      const success = await this.rebuildIndex(fullSiteIndexTasks[0]);
+      if (success) {
+        // Mark all pending tasks as complete, as they are implicitly covered by the full-site indexing.
+        for (let r = 0; r < recs.length; r++) await scheduleIndexingService.markIndexingTaskComplete(recs[r].id);
+      }
     } else {
       try {
         for (let r = 0; r < recs.length; r++) {
           const col = recs[r].collection_name;
           if (configureIndexingService.isCollectionConfiguredToBeIndexed(col)) {
+            await scheduleIndexingService.markIndexingTaskInProgress(recs[r].id);
             //Indexing the individual item
             if (recs[r].item_id) {
               if (recs[r].indexing_type !== 'remove-from-index') {

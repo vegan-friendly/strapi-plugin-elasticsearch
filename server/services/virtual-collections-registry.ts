@@ -30,7 +30,7 @@ const configSchema = yup.object({
       })
     )
     .default([]),
-  mappings: yup.object().default({}),
+  mappings: yup.object().optional(),
 });
 
 /**
@@ -55,7 +55,7 @@ export default ({ strapi }): VirtualCollectionsRegistryService => {
         const virtualCollectionsFactories = strapi.plugin('elasticsearch').config('virtualCollections') || [];
         config = virtualCollectionsFactories.map((factory: VirtualCollectionFactory) => {
           let collectionConfig: VirtualCollectionConfig = factory(strapi);
-          collectionConfig = configSchema.validateSync(collectionConfig, { stripUnknown: true });
+          collectionConfig = configSchema.validateSync(collectionConfig);
           collectionConfig.getIndexItemId = collectionConfig.getIndexItemId || ((id) => helper.getIndexItemId({ collectionName: collectionConfig.collectionName, itemId: id }));
           return { ...defaultConf, ...collectionConfig };
         });

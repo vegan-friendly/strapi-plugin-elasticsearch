@@ -1928,10 +1928,10 @@
     node-fetch "2.7.0"
     node-schedule "2.1.1"
 
-"@strapi/typescript-utils@^5.12.5":
-  version "5.12.5"
-  resolved "https://registry.npmjs.org/@strapi/typescript-utils/-/typescript-utils-5.12.5.tgz"
-  integrity sha512-nzYlHdPho2hHu7QfaWowWP4kAF2OaUeVLQ4LwU058in4HStZawqlNfB/tCBbNmE4mj5f0O/ZqcgmZUQznDkPUw==
+"@strapi/typescript-utils@^5.13.0":
+  version "5.13.0"
+  resolved "https://registry.npmjs.org/@strapi/typescript-utils/-/typescript-utils-5.13.0.tgz"
+  integrity sha512-eyd3TfbaSaY88cT45PQ6pwr1FkncpJP0WYFiMco5KbecFevR0XKt0yF8PCDgSshNqWHhC0xnQJ/GuXrPkfNT6Q==
   dependencies:
     chalk "4.1.2"
     cli-table3 "0.6.5"

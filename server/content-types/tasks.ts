@@ -12,7 +12,7 @@ export default {
   },
   pluginOptions: {
     'content-manager': {
-      visible: false,
+      visible: true,
     },
     'content-type-builder': {
       visible: false,
@@ -21,14 +21,14 @@ export default {
   attributes: {
     collection_name: {
       type: 'string',
-      required: true,
+      required: false,
     },
     item_id: {
       type: 'integer',
     },
     indexing_status: {
       type: 'enumeration',
-      enum: ['to-be-done', 'done'],
+      enum: ['to-be-done', 'in-progress', 'done'],
       required: true,
       default: 'to-be-done',
     },

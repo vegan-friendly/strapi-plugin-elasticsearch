@@ -59,4 +59,21 @@ export default ({ strapi }) => ({
       },
     });
   },
+  async markIndexingTaskInProgress(recId) {
+    await strapi.entityService.update('plugin::elasticsearch.task', recId, {
+      data: {
+        indexing_status: 'in-progress',
+      },
+    });
+  },
+
+  async getFullIndexingInProgress() {
+    const entries = await strapi.entityService.findMany('plugin::elasticsearch.task', {
+      filters: {
+        indexing_status: 'in-progress',
+        full_site_indexing: true,
+      },
+    });
+    return entries;
+  },
 });
