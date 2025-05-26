@@ -51,11 +51,6 @@ export type VirtualCollectionConfig = {
      * @returns ids of the items to be reindexed.
      */
     getIdsToReindex: GetIdsToIndexFunction;
-    /**
-     * if true, and the trigger is a delete event, the item of the virtual collection will be deleted as well if the id returned from getIdsToReindex match.
-     * defaults to false.
-     */
-    alsoTriggerDelete?: boolean;
   }>;
 
   /**

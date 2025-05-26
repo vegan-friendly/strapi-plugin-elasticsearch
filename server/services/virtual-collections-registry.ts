@@ -26,7 +26,6 @@ const configSchema = yup.object({
       yup.object({
         collection: yup.string().required(),
         getIdsToReindex: isFunction<GetIdsToIndexFunction>().required(),
-        alsoTriggerDelete: yup.boolean().default(false),
       })
     )
     .default([]),

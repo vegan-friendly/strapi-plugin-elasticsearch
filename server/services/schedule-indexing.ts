@@ -52,10 +52,12 @@ export default ({ strapi }) => ({
     });
     return entries;
   },
-  async markIndexingTaskComplete(recId) {
+  async markIndexingTaskComplete(recId, error: string | null = null) {
+    const status = error ? 'failed' : 'done';
     const entries = await strapi.entityService.update('plugin::elasticsearch.task', recId, {
       data: {
-        indexing_status: 'done',
+        indexing_status: status,
+        error_message: error,
       },
     });
   },

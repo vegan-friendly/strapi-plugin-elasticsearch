@@ -1,6 +1,7 @@
 import humanizeDuration from 'humanize-duration';
 import { EsInterfaceService, VirtualCollectionsIndexerService, VirtualCollectionsRegistryService, VirtualCollectionConfig, StrapiEntity } from '../types';
 import { HelperService } from '../types/helper-service.type';
+import { errors } from '@elastic/elasticsearch';
 
 /**
  * Service to handle indexing of virtual collections
@@ -26,7 +27,9 @@ export default ({ strapi }): VirtualCollectionsIndexerService => {
         const results = await collection.extractByIds([itemId]);
 
         if (!results || !Array.isArray(results) || results.length === 0) {
-          strapi.log.warn(`No data extracted for ${collectionName} with ID ${itemId}`);
+          // item does not exit - delete it from index
+          await this.deleteItem(collectionName, itemId);
+          strapi.log.debug(`Deleted virtual item: ${collectionName}:${itemId}`);
           return null;
         }
 
@@ -68,11 +71,13 @@ export default ({ strapi }): VirtualCollectionsIndexerService => {
     async reindex(collection: VirtualCollectionConfig) {
       const collectionName = collection.collectionName;
       const privateIndexAlias: string | undefined = collection.indexAlias;
+      const pageSize = 100;
 
       const helper = getHelperService();
 
       let timestamp = Date.now();
       let indexName = '';
+      let errors = 0;
       try {
         const esInterface = getElasticsearchService();
 
@@ -89,7 +94,15 @@ export default ({ strapi }): VirtualCollectionsIndexerService => {
 
         const pageLimit = 10000;
         while (page <= pageLimit) {
-          const pageData: StrapiEntity[] = await collection.extractData(page);
+          let pageData: StrapiEntity[];
+          try {
+            pageData = await collection.extractData(page, pageSize);
+          } catch (error: Error | any) {
+            strapi.log.error(`Error extracting data for page ${page} of ${collectionName}: ${error.message}`);
+            errors += pageSize;
+            page++;
+            continue;
+          }
           strapi.log.debug(`Extracted ${pageData.length} items from ${collectionName} for page ${page}`);
 
           if (!Array.isArray(pageData) || pageData.length === 0) {
@@ -114,13 +127,27 @@ export default ({ strapi }): VirtualCollectionsIndexerService => {
           }
 
           if (operations.length > 0) {
-            await Promise.all(operations.map((op) => esInterface.indexDataToSpecificIndex(op, indexName)));
+            await Promise.all(
+              operations.map((op) =>
+                esInterface.indexDataToSpecificIndex(op, indexName).catch((err) => {
+                  strapi.log.error(`Failed to index item ${op.itemId} in ${collectionName}: ${err}`);
+                  errors++;
+                })
+              )
+            );
           }
 
           totalIndexed += pageData.length;
           prevPageData = pageData;
           page++;
         }
+
+        if (errors > 0) {
+          throw new Error(
+            `Failed to index ${errors} of ${totalIndexed} items for virtual collection ${collectionName}. Errors were logged. Alias was not updated. took ${humanizeDuration(Date.now() - timestamp)}`
+          );
+        }
+
         strapi.log.info(`Reindexed ${totalIndexed} items for virtual collection: ${collectionName}. took ${humanizeDuration(Date.now() - timestamp)}. now updating alias.`);
 
         if (privateIndexAlias) {
@@ -164,13 +191,7 @@ export default ({ strapi }): VirtualCollectionsIndexerService => {
 
         // Reindex each item
         for (const id of idsToReindex) {
-          const isDelete = event.action?.toLowerCase()?.includes('delete') && trigger.alsoTriggerDelete && id === result.id;
-          if (isDelete) {
-            //delete the item from the index, if the item being delete is the one being reindexed
-            await this.deleteItem(collection.collectionName, id);
-          } else {
-            await this.indexItem(collection.collectionName, id);
-          }
+          await this.indexItem(collection.collectionName, id);
         }
       }
     },

@@ -28,9 +28,13 @@ export default {
     },
     indexing_status: {
       type: 'enumeration',
-      enum: ['to-be-done', 'in-progress', 'done'],
+      enum: ['to-be-done', 'in-progress', 'done', 'failed'],
       required: true,
       default: 'to-be-done',
+    },
+    error_message: {
+      type: 'string',
+      required: false,
     },
     full_site_indexing: {
       type: 'boolean',

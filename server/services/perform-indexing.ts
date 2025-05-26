@@ -2,7 +2,7 @@ import { EsInterfaceService, VirtualCollectionsRegistryService } from '../types'
 import { HelperService } from '../types/helper-service.type';
 
 export default ({ strapi }) => ({
-  async rebuildIndex(item: any = null) {
+  async rebuildIndex(task: any = null) {
     const helper: HelperService = strapi.plugins['elasticsearch'].services.helper;
     const esInterface: EsInterfaceService = strapi.plugins['elasticsearch'].services.esInterface;
     const scheduleIndexingService = strapi.plugins['elasticsearch'].services.scheduleIndexing;
@@ -11,6 +11,7 @@ export default ({ strapi }) => ({
     const virtualCollectionsIndexer = strapi.plugins['elasticsearch'].services['virtualCollectionsIndexer'];
     const virtualCollectionsRegistry: VirtualCollectionsRegistryService = strapi.plugins['elasticsearch'].services['virtualCollectionsRegistry'];
 
+    let taskError: any = null;
     try {
       console.log('strapi-plugin-elasticsearch : Request to rebuild the index received.');
       const fullIndexingInProgress = await scheduleIndexingService.getFullIndexingInProgress();
@@ -43,22 +44,22 @@ export default ({ strapi }) => ({
 
       //Step 2 : Index all the stuff on this new index
       console.log('strapi-plugin-elasticsearch : Starting to index all data into the new index.');
-      if (item == null) {
-        item = await scheduleIndexingService.addFullSiteIndexingTask();
+      if (task == null) {
+        task = await scheduleIndexingService.addFullSiteIndexingTask();
       }
 
-      if (item?.id) {
-        await scheduleIndexingService.markIndexingTaskInProgress(item.id);
+      if (task?.id) {
+        await scheduleIndexingService.markIndexingTaskInProgress(task.id);
         let entitiesIndexed = 0;
         for (let r = 0; r < cols.length; r++) {
           entitiesIndexed += await this.indexCollection(cols[r], newIndexName);
         }
 
         // Indexing the virtual collections
-        console.log('strapi-plugin-elasticsearch : Starting to index virtual collections. task id : ', item.id);
+        console.log('strapi-plugin-elasticsearch : Starting to index virtual collections. task id : ', task.id);
         const virtualEntriesIndexed = await virtualCollectionsIndexer.reindexAll(newIndexName);
 
-        await scheduleIndexingService.markIndexingTaskComplete(item.id);
+        await scheduleIndexingService.markIndexingTaskComplete(task.id);
 
         console.log('strapi-plugin-elasticsearch : Indexing of data into the new index complete.');
         //Step 4 : Move the alias to this new index
@@ -77,14 +78,15 @@ export default ({ strapi }) => ({
         await logIndexingService.recordIndexingFail('An error was encountered while trying site-wide re-indexing of content.');
         return false;
       }
-    } catch (err) {
+    } catch (err: any) {
+      taskError = err.message || String(err);
       console.log('strapi-plugin-elasticsearch : searchController : An error was encountered while re-indexing.');
       console.log(err);
       await logIndexingService.recordIndexingFail(err);
       throw err;
     } finally {
-      if (item?.id) {
-        await scheduleIndexingService.markIndexingTaskComplete(item.id);
+      if (task?.id) {
+        await scheduleIndexingService.markIndexingTaskComplete(task.id, taskError);
       }
     }
   },
