@@ -174,6 +174,10 @@ export default async ({ strapi }) => {
       });
     });
 
+    // clean up old indexing tasks, as server is booting.
+    // allow 60 seconds, in case strapi is being run in cluster mode and this is the second instance
+    await scheduleIndexingService.getActiveFullIndexingTasks(60);
+
     configureIndexingService.markInitialized();
   } catch (err: any) {
     console.error('An error was encountered while initializing the strapi-plugin-elasticsearch plugin.');

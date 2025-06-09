@@ -3,18 +3,20 @@ import { HelperService } from '../types/helper-service.type';
 
 export default ({ strapi }) => ({
   async rebuildIndex(task: any = null) {
-    const helper: HelperService = strapi.plugins['elasticsearch'].services.helper;
-    const esInterface: EsInterfaceService = strapi.plugins['elasticsearch'].services.esInterface;
-    const scheduleIndexingService = strapi.plugins['elasticsearch'].services.scheduleIndexing;
-    const configureIndexingService = strapi.plugins['elasticsearch'].services.configureIndexing;
-    const logIndexingService = strapi.plugins['elasticsearch'].services.logIndexing;
-    const virtualCollectionsIndexer = strapi.plugins['elasticsearch'].services['virtualCollectionsIndexer'];
-    const virtualCollectionsRegistry: VirtualCollectionsRegistryService = strapi.plugins['elasticsearch'].services['virtualCollectionsRegistry'];
+    const pluginServices = strapi.plugins['elasticsearch'].services;
+    
+    const helper: HelperService = pluginServices.helper;
+    const esInterface: EsInterfaceService = pluginServices.esInterface;
+    const scheduleIndexingService = pluginServices.scheduleIndexing;
+    const configureIndexingService = pluginServices.configureIndexing;
+    const logIndexingService = pluginServices.logIndexing;
+    const virtualCollectionsIndexer = pluginServices.virtualCollectionsIndexer;
+    const virtualCollectionsRegistry: VirtualCollectionsRegistryService = pluginServices.virtualCollectionsRegistry;
 
     let taskError: any = null;
     try {
       console.log('strapi-plugin-elasticsearch : Request to rebuild the index received.');
-      const fullIndexingInProgress = await scheduleIndexingService.getFullIndexingInProgress();
+      const fullIndexingInProgress = await scheduleIndexingService.getActiveFullIndexingTasks();
       if (fullIndexingInProgress.length > 0) {
         const msg = `Indexing is already in progress - see tasks ${fullIndexingInProgress.map((t) => t.id)}. This request is ignored and marked as failed.`;
         console.log('strapi-plugin-elasticsearch : ' + msg);
