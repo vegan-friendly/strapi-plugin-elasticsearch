@@ -1,6 +1,6 @@
 {
   "name": "@vegan-friendly/strapi-plugin-elasticsearch",
-  "version": "0.3.1",
+  "version": "0.3.2",
   "description": "A Strapi plugin to enable using Elasticsearch with Strapi CMS.",
   "homepage": "https://github.com/vegan-friendly/strapi-plugin-elasticsearch",
   "strapi": {

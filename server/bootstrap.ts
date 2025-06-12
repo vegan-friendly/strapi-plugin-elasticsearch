@@ -161,15 +161,15 @@ export default async ({ strapi }) => {
         models: [collectionUID],
 
         afterCreate: async (event) => {
-          await virtualCollectionIndexer.handleTriggerEvent(event);
+          virtualCollectionIndexer.handleTriggerEvent(event);
         },
 
         afterUpdate: async (event) => {
-          await virtualCollectionIndexer.handleTriggerEvent(event);
+          virtualCollectionIndexer.handleTriggerEvent(event);
         },
 
         afterDelete: async (event) => {
-          await virtualCollectionIndexer.handleTriggerEvent(event);
+          virtualCollectionIndexer.handleTriggerEvent(event);
         },
       });
     });

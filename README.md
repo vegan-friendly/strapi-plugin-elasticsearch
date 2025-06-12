@@ -257,6 +257,111 @@ module.exports = (plugin) => {
 - This will create a new route `/api/elasticsearch/enhanced-search` being served by the function defined above.
 - You can add / modify the routes and controllers as necessary.
 
+## Virtual Collections
+
+**Virtual Collections** allow you to index and search data that does not directly map to a single Strapi collection type. This is useful for aggregating, transforming, or combining data from multiple sources before indexing it in Elasticsearch.
+
+### What is a Virtual Collection?
+
+A virtual collection is a logical grouping of data that you define, which can be indexed into Elasticsearch as if it were a regular Strapi collection. You control how the data is extracted, transformed, and indexed.
+
+For example -  
+Let's say that you have two collections defined in Strapi:
+
+- Restaurant
+- Chain
+
+* Each chain is related to one or more restaurants. Some restaurants don't have a chain.
+
+Now let's say you want to index the restaurants, but in each restaurant you'd like to include some information about the restaurant, and you also want to merge some fields (e.g: if a Restaurant doesn't have a `description` - it inherits it from its chain ).  
+To do that, you need to create a virtual-collection in this plugin configuration, based on your existing restaurant collection.
+
+### How to Register a Virtual Collection
+
+To register a virtual collection, you need to provide a configuration object that implements the `VirtualCollectionConfig` interface. This is typically done in your plugin or project code.
+
+**Example:**
+
+```typescript
+// src/extensions/elasticsearch/virtual-collections/my-virtual-collection.ts
+
+import { VirtualCollectionConfig } from 'strapi-plugin-elasticsearch/server/types/virtual-collections.type';
+
+const myVirtualCollection: VirtualCollectionConfig = {
+  collectionName: 'virtual::my-virtual-collection',
+  indexAlias: 'my_virtual_collection_index',
+  extractData: async (page, pageSize) => {
+    // Fetch and return an array of entities for the given page
+    // Example: aggregate data from multiple collections
+    return [];
+  },
+  extractByIds: async (ids) => {
+    // Fetch and return entities by their IDs
+    return [];
+  },
+  getIndexItemId: (itemId, collectionName) => `${collectionName}::${itemId}`,
+  triggers: [
+    {
+      collection: 'api::some-collection.some-collection',
+      getIdsToReindex: (event) => {
+        // Return an array of virtual collection item IDs to reindex
+        return [event.result.id];
+      },
+    },
+  ],
+  mappings: {
+    // Optional: Elasticsearch mappings for this collection
+  },
+};
+
+export default myVirtualCollection;
+```
+
+### Key Properties
+
+- **collectionName**: Unique name for your virtual collection.
+- **indexAlias**: (Optional) Alias for the Elasticsearch index.
+- **extractData(page, pageSize)**: Function to fetch paginated data for indexing.
+- **extractByIds(ids)**: Function to fetch specific items by ID.
+- **getIndexItemId(itemId, collectionName)**: (Optional) Function to generate unique Elasticsearch document IDs.
+- **triggers**: Array of triggers that specify which Strapi collections should cause this virtual collection to reindex.
+- **mappings**: (Optional) Elasticsearch mappings for the index.
+
+### How Triggers Work
+
+Each trigger listens to changes on a specified Strapi collection. When a change occurs, the `getIdsToReindex` function is called with the event data, and should return the IDs of the virtual collection items that need to be reindexed.  
+These items are then reindexed - they are fetched using `extractByIds` and are sent to ElasticSearch. If an item cannot be found using `extractByIds` - it is deleted from ElasticSearch.
+
+### Registering the Virtual Collection
+
+Register your virtual collection by specifying the `virtualCollections` property in this plugin's configuration, in `config/plugins.js`.
+
+**Example:**
+
+```javascript
+// config/plugins.js
+
+import myVirtualCollection from './virtual-collections/my-virtual-collection';
+
+module.exports = async ({ env }) => {
+  return {
+    elasticsearch :{
+      enabled: true,
+      config: {
+        ...
+        virtualCollections: [
+          myVirtualCollection,
+        ]
+      }
+    }
+  }
+};
+```
+
+### Indexing and Searching
+
+Once registered, your virtual collection will be indexed according to the triggers and can be searched like any other indexed collection in Elasticsearch.
+
 ## Bugs
 For any bugs, please create an issue [here](https://github.com/geeky-biz/strapi-plugin-elasticsearch/issues).
 
