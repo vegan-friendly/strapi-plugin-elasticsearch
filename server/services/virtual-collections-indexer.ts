@@ -93,14 +93,19 @@ export default ({ strapi }): VirtualCollectionsIndexerService => {
         let totalIndexed = 0;
 
         const pageLimit = 10000;
+        let pageErrorsInARow = 0;
         while (page <= pageLimit) {
           let pageData: StrapiEntity[];
           try {
             pageData = await collection.extractData(page, pageSize);
+            pageErrorsInARow = 0;
           } catch (error: Error | any) {
             strapi.log.error(`Error extracting data for page ${page} of ${collectionName}: ${error.message}`);
             errors += pageSize;
             page++;
+            if (pageErrorsInARow++ > 5) {
+              throw new Error(`Too many errors while extracting data for ${collectionName} at page ${page}. Stopping reindexing.`);
+            }
             continue;
           }
           strapi.log.debug(`Extracted ${pageData.length} items from ${collectionName} for page ${page}`);
