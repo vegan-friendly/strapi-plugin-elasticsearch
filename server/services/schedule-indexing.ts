@@ -58,7 +58,7 @@ export default ({ strapi }) => ({
     const entries = await strapi.entityService.update('plugin::elasticsearch.task', recId, {
       data: {
         indexing_status: status,
-        error_message: error,
+        error_message: error?.slice(0, 255) || null,
       },
     });
   },
