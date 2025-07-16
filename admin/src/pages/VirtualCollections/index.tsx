@@ -1,17 +1,21 @@
 import React, { useState, useEffect } from 'react';
 import { SubNavigation } from '../../components/SubNavigation';
 import { Box, Flex, Typography, Button, IconButton, Table, Tr, Td, Thead, Tbody, Th } from '@strapi/design-system';
-import { apiGetVirtualCollections, apiReindexVirtualCollection } from '../../utils/apiUrls';
+import { apiGetVirtualCollections, apiReindexVirtualCollection, apiGetVirtualCollectionInfo } from '../../utils/apiUrls';
 import axiosInstance from '../../utils/axiosInstance';
 import { LoadingIndicatorPage, useNotification } from '@strapi/helper-plugin';
 import { Refresh } from '@strapi/icons';
 import pluginId from '../../pluginId';
 
 interface VirtualCollection {
-    collectionName: string;
-    indexAlias?: string;
-    triggersCount: number;
-    triggerCollections: string[];
+  collectionName: string;
+  indexAlias?: string;
+  triggersCount: number;
+  triggerCollections: string[];
+  currentIndex?: string | null;
+  matchingIndicesCount?: number;
+  documentCount?: number;
+  error?: string | null;
 }
 
 const loadVirtualCollections = async (): Promise<VirtualCollection[]> => {
@@ -23,6 +27,7 @@ const VirtualCollections = () => {
   const [virtualCollections, setVirtualCollections] = useState<VirtualCollection[] | null>(null);
   const [isInProgress, setIsInProgress] = useState(false);
   const [reindexingCollection, setReindexingCollection] = useState<string | null>(null);
+  const [refreshingCollection, setRefreshingCollection] = useState<string | null>(null);
   const toggleNotification = useNotification();
   console.log('VirtualCollections component rendering');
 
@@ -50,6 +55,33 @@ const VirtualCollections = () => {
       });
     } finally {
       setIsInProgress(false);
+    }
+  };
+  const refreshCollectionInfo = async (collectionName: string) => {
+    setRefreshingCollection(collectionName);
+    try {
+      const updatedInfo = await axiosInstance.get(apiGetVirtualCollectionInfo(collectionName));
+
+      // Update the specific collection in the list
+      setVirtualCollections((prevCollections) => {
+        if (!prevCollections) return prevCollections;
+        return prevCollections.map((collection) => (collection.collectionName === collectionName ? { ...collection, ...updatedInfo.data } : collection));
+      });
+
+      toggleNotification({
+        type: 'success',
+        message: `Virtual collection "${collectionName}" information refreshed.`,
+        timeout: 3000,
+      });
+    } catch (err) {
+      console.error('Error refreshing collection info:', err);
+      toggleNotification({
+        type: 'warning',
+        message: `Failed to refresh virtual collection "${collectionName}" information.`,
+        timeout: 5000,
+      });
+    } finally {
+      setRefreshingCollection(null);
     }
   };
 
@@ -103,8 +135,9 @@ const VirtualCollections = () => {
             </Flex>
           </Box>
           <Box width="100%" paddingBottom={4}>
+            {' '}
             {virtualCollections && virtualCollections.length > 0 ? (
-              <Table colCount={4} rowCount={virtualCollections.length}>
+              <Table colCount={7} rowCount={virtualCollections.length}>
                 <Thead>
                   <Tr>
                     <Th>
@@ -112,6 +145,15 @@ const VirtualCollections = () => {
                     </Th>
                     <Th>
                       <Typography variant="sigma">Index Alias</Typography>
+                    </Th>
+                    <Th>
+                      <Typography variant="sigma">Current Index</Typography>
+                    </Th>
+                    <Th>
+                      <Typography variant="sigma">Indices Count</Typography>
+                    </Th>
+                    <Th>
+                      <Typography variant="sigma">Documents</Typography>
                     </Th>
                     <Th>
                       <Typography variant="sigma">Trigger Collections</Typography>
@@ -133,6 +175,21 @@ const VirtualCollections = () => {
                         <Typography textColor="neutral600">{collection.indexAlias || 'Default Index'}</Typography>
                       </Td>
                       <Td>
+                        <Typography textColor="neutral600" fontSize={1}>
+                          {collection.error ? <span style={{ color: 'red' }}>Error</span> : collection.currentIndex || 'N/A'}
+                        </Typography>
+                      </Td>
+                      <Td>
+                        <Typography textColor="neutral600" fontSize={1}>
+                          {collection.error ? '-' : collection.matchingIndicesCount || 0}
+                        </Typography>
+                      </Td>
+                      <Td>
+                        <Typography textColor="neutral600" fontSize={1}>
+                          {collection.error ? '-' : collection.documentCount?.toLocaleString() || '0'}
+                        </Typography>
+                      </Td>
+                      <Td>
                         <Box>
                           {collection.triggerCollections && collection.triggerCollections.length > 0 ? (
                             collection.triggerCollections.map((triggerCollection, idx) => (
@@ -150,15 +207,24 @@ const VirtualCollections = () => {
                         </Box>
                       </Td>
                       <Td>
-                        <Button
-                          variant="secondary"
-                          size="S"
-                          loading={reindexingCollection === collection.collectionName}
-                          disabled={isInProgress || reindexingCollection !== null}
-                          onClick={() => reindexVirtualCollection(collection.collectionName)}
-                        >
-                          Reindex
-                        </Button>
+                        <Flex gap={2}>
+                          <IconButton
+                            label="Refresh Info"
+                            loading={refreshingCollection === collection.collectionName}
+                            disabled={isInProgress || refreshingCollection !== null}
+                            onClick={() => refreshCollectionInfo(collection.collectionName)}
+                            icon={<Refresh />}
+                          />
+                          <Button
+                            variant="secondary"
+                            size="S"
+                            loading={reindexingCollection === collection.collectionName}
+                            disabled={isInProgress || reindexingCollection !== null || refreshingCollection !== null}
+                            onClick={() => reindexVirtualCollection(collection.collectionName)}
+                          >
+                            Reindex
+                          </Button>
+                        </Flex>
                       </Td>
                     </Tr>
                   ))}

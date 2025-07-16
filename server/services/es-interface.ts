@@ -159,4 +159,48 @@ export default ({ strapi }): EsInterfaceService => ({
       throw err;
     }
   },
+
+  async getAliasInfo(aliasName: string) {
+    try {
+      const result = await client!.indices.getAlias({
+        name: aliasName,
+      });
+      return result;
+    } catch (err: any) {
+      if (err?.meta?.statusCode === 404) {
+        return null;
+      }
+      throw err;
+    }
+  },
+
+  async getIndexDocumentCount(indexName: string): Promise<number> {
+    try {
+      const result = await client!.count({
+        index: indexName,
+      });
+      return result.count;
+    } catch (err: any) {
+      if (err?.meta?.statusCode === 404) {
+        return 0;
+      }
+      throw err;
+    }
+  },
+
+  async getIndicesInfo(pattern: string) {
+    try {
+      const results = await client!.cat.indices({
+        index: pattern,
+        format: 'json',
+        h: 'index,docs.count,store.size',
+      });
+      return results;
+    } catch (err: any) {
+      if (err?.message?.includes('index_not_found_exception')) {
+        return [];
+      }
+      throw err;
+    }
+  },
 });

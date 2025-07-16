@@ -70,4 +70,25 @@ export interface EsInterfaceService {
   searchData(searchQuery: any): Promise<any>;
 
   listIndicesByPattern(pattern: string): Promise<string[]>;
+
+  /**
+   * Gets information about an alias, including which indexes it points to.
+   * @param aliasName - The name of the alias.
+   * @returns A promise that resolves with alias information or null if not found.
+   */
+  getAliasInfo(aliasName: string): Promise<any>;
+
+  /**
+   * Gets the document count for a specific index.
+   * @param indexName - The name of the index.
+   * @returns A promise that resolves with the document count.
+   */
+  getIndexDocumentCount(indexName: string): Promise<number>;
+
+  /**
+   * Gets detailed information about indices matching a pattern.
+   * @param pattern - The index pattern to match.
+   * @returns A promise that resolves with index information.
+   */
+  getIndicesInfo(pattern: string): Promise<any[]>;
 }

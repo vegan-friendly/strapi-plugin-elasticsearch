@@ -9,6 +9,12 @@ export default {
       config: { policies: [] },
     },
     {
+      method: 'GET',
+      path: '/virtual-collections/:collectionName/info',
+      handler: 'virtualCollections.getCollectionInfo',
+      config: { policies: [] },
+    },
+    {
       method: 'POST',
       path: '/virtual-collections/:collectionName/reindex',
       handler: 'virtualCollections.reindexCollection',

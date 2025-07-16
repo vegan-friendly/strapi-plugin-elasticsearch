@@ -14,4 +14,5 @@ export const apiImportContentConfig = `/${pluginId}/import-content-config/`;
 
 // Virtual Collections APIs
 export const apiGetVirtualCollections = `/${pluginId}/virtual-collections`;
+export const apiGetVirtualCollectionInfo = (collectionName) => `/${pluginId}/virtual-collections/${collectionName}/info`;
 export const apiReindexVirtualCollection = (collectionName) => `/${pluginId}/virtual-collections/${collectionName}/reindex`;
