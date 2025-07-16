@@ -68,14 +68,15 @@ export default ({ strapi }): EsInterfaceService => ({
     try {
       const pluginConfig = await strapi.config.get('plugin.elasticsearch');
       const aliasName = optionalAliasName ? optionalAliasName : pluginConfig.indexAliasName;
-      const aliasExists = await client!.indices.existsAlias({ name: aliasName });
-      if (aliasExists) {
-        console.log('strapi-plugin-elasticsearch : Alias with this name already exists, removing it.');
-        await client!.indices.deleteAlias({ index: '*', name: aliasName });
-      }
+
+      // Ensure the index exists before attaching the alias
       const indexExists = await client!.indices.exists({ index: indexName });
-      if (!indexExists) await this.createIndex(indexName, mappings);
+      if (!indexExists) {
+        throw new Error(`Failed to attach alias '${aliasName}' to index '${indexName}' - Index does not exist.`);
+      }
+
       console.log('strapi-plugin-elasticsearch : Attaching the alias ', aliasName, ' to index : ', indexName);
+      // putAlias will create or update the alias to point to the specified index
       await client!.indices.putAlias({ index: indexName, name: aliasName });
     } catch (err: any) {
       if (err?.message?.includes('ECONNREFUSED')) {
@@ -85,6 +86,7 @@ export default ({ strapi }): EsInterfaceService => ({
         console.log('strapi-plugin-elasticsearch : Attaching alias to the index - Error while setting up alias within ElasticSearch.');
         console.log(err);
       }
+      throw err;
     }
   },
   async checkESConnection() {
