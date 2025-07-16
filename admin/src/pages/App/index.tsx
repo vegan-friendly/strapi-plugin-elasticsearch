@@ -12,15 +12,18 @@ import pluginId from '../../pluginId';
 import ConfigureCollectionList from '../ConfigureCollectionList';
 import ConfigureCollection from '../ConfigureCollection';
 import ViewIndexingRunLog from '../ViewIndexingRunLog';
+import VirtualCollections from '../VirtualCollections';
 import Homepage from '../Homepage';
 const App = () => {
+  console.log('elasticsearch plugin App component rendering');
   return (
       <Switch>
         <Route path={`/plugins/${pluginId}`} render={() => (<Redirect to={`/plugins/${pluginId}/home`} />)} exact />
         <Route path={`/plugins/${pluginId}/home`} component={Homepage} exact />
         <Route path={`/plugins/${pluginId}/configure-collections`} component={ConfigureCollectionList} exact />
         <Route path={`/plugins/${pluginId}/configure-collections/:collectionName`} component={ConfigureCollection} exact />
-        <Route path={`/plugins/${pluginId}/view-indexing-logs`} component={ViewIndexingRunLog} />        
+        <Route path={`/plugins/${pluginId}/virtual-collections`} component={VirtualCollections} exact />
+        <Route path={`/plugins/${pluginId}/view-indexing-logs`} component={ViewIndexingRunLog} />
         <Route component={AnErrorOccurred} />
       </Switch>
   );

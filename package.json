@@ -34,7 +34,7 @@
   ],
   "scripts": {
     "build": "tsc",
-    "develop": "tsc --watch"
+    "watch": "tsc --watch"
   },
   "dependencies": {
     "@elastic/elasticsearch": "^8.9.0",

@@ -3,6 +3,7 @@ import performSearch from './perform-search';
 import runLog from './run-log';
 import setupInfo from './setup-info';
 import performIndexing from './perform-indexing';
+import virtualCollections from './virtual-collections';
 
 export default {
   config: configureIndexingRoutes,
@@ -10,4 +11,5 @@ export default {
   runLog: runLog,
   setupInfo: setupInfo,
   performIndexing: performIndexing,
+  virtualCollections: virtualCollections,
 };

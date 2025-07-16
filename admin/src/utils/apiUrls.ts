@@ -11,3 +11,7 @@ export const apiTriggerIndexing = `/${pluginId}/trigger-indexing/`;
 
 export const apiExportContentConfig = `/${pluginId}/export-content-config/`;
 export const apiImportContentConfig = `/${pluginId}/import-content-config/`;
+
+// Virtual Collections APIs
+export const apiGetVirtualCollections = `/${pluginId}/virtual-collections`;
+export const apiReindexVirtualCollection = (collectionName) => `/${pluginId}/virtual-collections/${collectionName}/reindex`;

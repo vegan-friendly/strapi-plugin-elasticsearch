@@ -27,6 +27,12 @@ export const SubNavigation = ({ activeUrl = null }: { activeUrl?: string | null 
     },
     {
       id: 3,
+      label: 'Virtual Collections',
+      icon: Connector,
+      to: `/plugins/${pluginId}/virtual-collections`,
+    },
+    {
+      id: 4,
       label: 'Indexing Run Logs',
       icon: Connector,
       to: `/plugins/${pluginId}/view-indexing-logs`,
